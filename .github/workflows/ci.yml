@@ -2,14 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
   pull_request:
-    branches: [ "main" ]
+    branches: ['main']
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15-alpine
@@ -26,27 +26,27 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-        
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-        
-    - name: Install Dependencies
-      run: poetry install --no-interaction --root
-      
-    - name: Run Linting (Ruff)
-      run: poetry run ruff check .
-      
-    - name: Run Tests
-      env:
-        # Note: We use the service container's localhost port
-        DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/test_db
-      run: poetry run pytest
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install Dependencies
+        run: poetry install --no-interaction --root
+
+      - name: Run Linting (Ruff)
+        run: poetry run ruff check .
+
+      - name: Run Tests
+        env:
+          # Note: We use the service container's localhost port
+          DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/test_db
+        run: poetry run pytest
