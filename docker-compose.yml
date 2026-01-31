@@ -22,8 +22,13 @@ services:
       - '8000:8000'
     volumes:
       - ./src:/app/src
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
+      - ./tests:/app/tests
+
     env_file:
       - .env
+
     depends_on:
       db:
         condition: service_healthy
