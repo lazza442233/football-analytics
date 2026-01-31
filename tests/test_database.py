@@ -6,7 +6,22 @@ from src.config import settings
 from src.models import Player
 
 # Use the same database URL as the app
-engine = create_async_engine(settings.DATABASE_URL, echo=True, future=True)
+# Use explicit URL from config or fallback/override
+# In CI, env var DATABASE_URL is set. In local, settings is used.
+# However, settings.DATABASE_URL relies on individual vars. 
+# Better to allow overriding settings or use os.environ directly if set for testing overrides.
+
+# For simplicity, we rely on `settings.DATABASE_URL` which config.py constructs from env vars.
+# The CI yaml sets DATABASE_URL env var, but config.py builds it from components.
+# We need to make sure config.py respects a full DATABASE_URL if present, or we patch it here.
+
+import os
+
+# If DATABASE_URL is set (like in CI), use it. Otherwise use composed settings.
+DB_URL = os.getenv("DATABASE_URL", settings.DATABASE_URL)
+
+engine = create_async_engine(DB_URL, echo=True, future=True)
+
 
 
 @pytest_asyncio.fixture
