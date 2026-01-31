@@ -1,11 +1,14 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from sqlalchemy import text
-from src.database import engine
+from sqlmodel.ext.asyncio.session import AsyncSession
+from src.database import engine, get_session
+from src.models import Player
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 
 @asynccontextmanager
@@ -26,3 +29,12 @@ app = FastAPI(title="Football Analytics", lifespan=lifespan)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/players", response_model=Player)
+async def create_player(player: Player, session: AsyncSession = Depends(get_session)):
+    session.add(player)
+    await session.commit()
+    await session.refresh(player)
+    return player
+
