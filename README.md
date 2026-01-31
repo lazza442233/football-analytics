@@ -1,26 +1,25 @@
-# Football Analytics
+# Football Analytics Platform
 
-A containerized Python API for football analytics, built with FastAPI.
+A high-performance analytics engine for modern football data.
 
-## Prerequisites
+## Tech Stack
+- **Python 3.12**
+- **FastAPI**
+- **Docker**
+- **PostgreSQL**
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
+## How to start this locally
 
-## getting Started
-
-1. **Build and start the services:**
-
+1. **Build and run the container:**
    ```bash
    docker compose up --build
    ```
 
 2. **Access the API:**
+   - **Health Check:** [http://localhost:8000/health](http://localhost:8000/health)
+   - **Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
 
-   The API will be available at [http://localhost:8000](http://localhost:8000).
-   - Health check: [http://localhost:8000/health](http://localhost:8000/health)
-   - Interactive docs (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)
+## Development workflow
 
-## Development
-
-The project is configured with hot-reloading. Changes to files in the `src/` directory will automatically restart the server.
+- **Tests:** Run `poetry run pytest`
+- **Linting:** Run `poetry run ruff check .`
