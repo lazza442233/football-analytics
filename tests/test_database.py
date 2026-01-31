@@ -1,8 +1,7 @@
 import pytest
 import pytest_asyncio
 from sqlmodel import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from src.config import settings
 from src.models import Player
 
@@ -12,7 +11,7 @@ engine = create_async_engine(settings.DATABASE_URL, echo=True, future=True)
 
 @pytest_asyncio.fixture
 async def session():
-    async_session = sessionmaker(
+    async_session = async_sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
     )
     async with async_session() as session:

@@ -25,11 +25,12 @@ def upgrade() -> None:
     op.create_table('player',
                     sa.Column('id', sa.Integer(), nullable=False),
                     sa.Column(
-                        'name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-                    sa.Column('position', sqlmodel.sql.sqltypes.AutoString(),
+                        'name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),  # type: ignore
+                    sa.Column('position', sqlmodel.sql.sqltypes.AutoString(),  # type: ignore
                               nullable=False),
                     sa.PrimaryKeyConstraint('id')
                     )
+
     # ### end Alembic commands ###
 
 
