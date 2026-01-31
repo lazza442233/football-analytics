@@ -10,7 +10,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
@@ -37,4 +36,3 @@ async def create_player(player: Player, session: AsyncSession = Depends(get_sess
     await session.commit()
     await session.refresh(player)
     return player
-
