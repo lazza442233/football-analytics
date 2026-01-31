@@ -4,8 +4,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from src.config import settings
 
-# Create the async engine
-# echo=True will log SQL queries to stdout, useful for debugging
 engine = create_async_engine(settings.DATABASE_URL, echo=True, future=True)
 
 
