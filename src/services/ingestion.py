@@ -37,17 +37,17 @@ class StatsBombIngestionService:
     async def run(self):
         logger.info("Starting ingestion...")
 
-        # 1. Upsert Competition
+        # Upsert Competition
         competition = await self.ingest_competition()
         if not competition:
             return
 
-        # 2. Fetch Matches
+        # Fetch Matches
         match_obj = await self.ingest_match(competition)
         if not match_obj:
             return
 
-        # 3. Fetch Events
+        # Fetch Events
         await self.ingest_events(match_obj.id)
 
         logger.info("Ingestion complete successfully.")
@@ -152,7 +152,7 @@ class StatsBombIngestionService:
                 # Attributes
                 clean_attrs = self.clean_dict(row.to_dict())
 
-                # Remove core fields
+                # Remove core fields as they are stored in dedicated columns
                 core_fields = ['id', 'match_id', 'minute', 'second', 'type',
                                'player_id', 'team_id', 'location', 'index', 'period', 'timestamp']
                 for field in core_fields:

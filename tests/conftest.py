@@ -18,17 +18,17 @@ test_engine = create_async_engine(DB_URL, echo=False)
 
 @pytest.fixture(name="session")
 async def session_fixture():
-    # 1. Create tables
+    # Setup: Create tables
     async with test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
-    # 2. Return session
+    # Yield Session
     async_session = sessionmaker(
         test_engine, class_=AsyncSession, expire_on_commit=False)
     async with async_session() as session:
         yield session
 
-    # 3. Cleanup (Drop tables)
+    # Teardown: Drop tables
     async with test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
 

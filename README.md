@@ -110,10 +110,13 @@ POSTGRES_HOST=localhost poetry run pytest
 │   ├── ingest_data.py   # Main ingestion script
 │   └── ...
 ├── src/                 # Application Source Code
+│   ├── api/             # API Routers & Endpoints
+│   ├── services/        # Business Logic & Ingestion
 │   ├── config.py        # Environment configuration
 │   ├── database.py      # Async DB setup
 │   ├── main.py          # FastAPI entry point
 │   └── models.py        # SQLModel database schemas
+
 ├── tests/               # Pytest suite
 ├── docker-compose.yml   # Infrastructure definition
 └── pyproject.toml       # Dependencies
