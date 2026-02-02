@@ -79,6 +79,36 @@ def mock_sb_data():
                 "shot_statsbomb_xg": 0.35,
                 "shot_outcome": "Goal",
             },
+            {
+                "id": str(uuid.uuid4()),
+                "match_id": 1001,
+                "minute": 40,
+                "second": 10,
+                "type": "Dribble",
+                "player_id": 10,
+                "player": "Player A1",
+                "position": "Midfielder",
+                "team_id": 100,
+                "team": "Golden Team A",
+                "location": [70.0, 20.0],
+                "dribble_outcome": "Complete",
+                "dribble_overun": False,
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "match_id": 1001,
+                "minute": 55,
+                "second": 5,
+                "type": "Foul Committed",
+                "player_id": 12,
+                "player": "Player A3",
+                "position": "Defender",
+                "team_id": 100,
+                "team": "Golden Team A",
+                "location": [30.0, 50.0],
+                "foul_committed_type": "Dangerous Play",
+                "foul_committed_card": "Yellow Card",
+            },
         ]
     )
 
@@ -141,10 +171,10 @@ async def test_golden_master_ingestion(session, mock_sb_data):
         assert p2 is not None and p2.name == "Player A2"
 
         # Verify DB - Events
-        # We expect 2 events
+        # We expect 4 events now (Pass, Shot, Dribble, Foul Committed)
         result = await session.exec(select(Event).where(Event.match_id == 1001))
         events = result.all()
-        assert len(events) == 2
+        assert len(events) == 4
 
         # Check specific event details (The "Type" check)
         shot_events = [e for e in events if e.type == "Shot"]
@@ -158,3 +188,15 @@ async def test_golden_master_ingestion(session, mock_sb_data):
         assert shot.attributes.get("shot_statsbomb_xg") == 0.35
         assert shot.player_id == 11
         assert shot.location_x == 105.0
+
+        # Check Dribble
+        dribble_events = [e for e in events if e.type == "Dribble"]
+        assert len(dribble_events) == 1
+        dribble = dribble_events[0]
+        assert dribble.attributes.get("dribble_outcome") == "Complete"
+
+        # Check Foul
+        foul_events = [e for e in events if e.type == "Foul Committed"]
+        assert len(foul_events) == 1
+        foul = foul_events[0]
+        assert foul.attributes.get("foul_committed_card") == "Yellow Card"
