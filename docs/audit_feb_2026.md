@@ -60,9 +60,9 @@ The **Football Analytics** platform has successfully transitioned from an experi
 
 ### Phase 1: Hardening (Weeks 1-2)
 
-- [ ] **Ingestion Coverage**: Increase `src/services/ingestion.py` coverage to >80% by adding test cases for `Pass`, `Dribble`, and `Foul` events in the Golden Master.
-- [ ] **Pre-commit adoption**: Ensure all developers enforce the new pre-commit hooks locally.
-- [ ] **Logging Strategy**: Implement structured logging (JSON) for better observability in production.
+- [x] **Ingestion Coverage**: Increase `src/services/ingestion.py` coverage to >80% by adding test cases for `Pass`, `Dribble`, and `Foul` events in the Golden Master.
+- [x] **Pre-commit adoption**: Ensure all developers enforce the new pre-commit hooks locally.
+- [x] **Logging Strategy**: Implement structured logging (JSON) for better observability in production.
 
 ### Phase 2: Feature Expansion (Weeks 3-6)
 

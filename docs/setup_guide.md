@@ -21,6 +21,12 @@
     poetry install
     ```
 
+3.  **Setup Pre-commit Hooks**
+    This ensures that linting (Ruff) and formatting checks run locally before every commit.
+    ```bash
+    poetry run pre-commit install
+    ```
+
 ## Database Setup
 
 1.  **Start the Database**
