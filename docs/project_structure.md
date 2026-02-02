@@ -1,0 +1,51 @@
+# Project Structure
+
+This document outlines the organization of the codebase, located primarily in the `src/` directory.
+
+## Directory Layout
+
+```
+src/
+├── api/                  # FastAPI Application
+│   └── routers/          # API Endpoints (Players, Matches, etc.)
+│
+├── scripts/              # Data Ingestion & Utility Scripts
+│   ├── ingest_matches.py # Bulk metadata ingestion
+│   ├── ingest_data.py    # Detailed event ingestion
+│   └── research_statsbomb.py # Development utilities
+│
+├── services/             # Business Logic Layer
+│   └── ingestion.py      # Core logic for processing StatsBomb data
+│
+├── config.py             # Configuration (Env vars)
+├── database.py           # Database connection & Session management
+├── main.py               # Application Entrypoint
+└── models.py             # SQLModel Database Entities
+```
+
+## Key Components
+
+### 1. Services (`src/services/`)
+
+Encapsulates complex business logic.
+
+- **IngestionService**: Responsible for orchestrating the fetch-transform-load process for StatsBomb data. It handles relational integrity (creating Players before Events) and transaction management.
+
+### 2. Scripts (`src/scripts/`)
+
+Executable modules for operational tasks.
+
+- **`ingest_matches.py`**: The primary entry point for populating the database with historical match data.
+- **`ingest_data.py`**: A service-wrapper for deep-diving into specific match events.
+
+### 3. API (`src/api/`)
+
+The REST interface for the data.
+
+- Uses `APIRouter` to modularize endpoints.
+- Currently serves basic entity retrieval (Players).
+
+### 4. Database Layer
+
+- **`models.py`**: Defines the schema. Tables are created automatically via Alembic migrations (managed externally in root).
+- **`database.py`**: Provides the `get_session` dependency for async database access.

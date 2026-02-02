@@ -13,9 +13,9 @@ StatsBomb organizes data in the following hierarchy:
 3.  **Events**: Atomic actions (Pass, Shot, Dribble) within a match.
 4.  **Frames** (360 Data): Contextual player locations (available for some matches).
 
-## Schema Mapping Plan
+## Current Schema Architecture
 
-We will iterate on our SQLModel definitions to support this relational structure.
+We use **SQLModel** to define our database schema, ensuring strict typing and automatic migration generation.
 
 ### 1. `Competition` Table
 
@@ -63,8 +63,45 @@ Events have common fields and type-specific fields. We might use a JSONB column 
 | `location`        | `location_y`  | Float        |
 | (Everything else) | `attributes`  | JSONB        |
 
-## Ingestion Workflow
+## Ingestion Scripts
 
-1.  **ETL Script**: A Python script (`src/ingest.py`) running as a background worker.
-2.  **Idempotency**: The script should check if a match has already been ingested before processing it.
-3.  **Batch Processing**: We will process one season at a time.
+We have refactored ingestion logic into specific scripts located in `src/scripts/`.
+
+### 1. Ingest Matches (Bulk Metadata)
+
+**Script**: `src/scripts/ingest_matches.py`
+
+This script fetches competition info and all available matches for that competition/season. It upserts `Competition` and `Match` records into the database.
+
+**Usage**:
+
+```bash
+# Needs ENV vars if not set in .env
+PYTHONPATH=. POSTGRES_HOST=localhost poetry run python src/scripts/ingest_matches.py
+```
+
+_Note: Currently hardcoded to World Cup 2022 inside the script. Future parameterization planned._
+
+### 2. Ingest Detailed Data (Service Based)
+
+**Script**: `src/scripts/ingest_data.py`
+
+This script utilizes the `StatsBombIngestionService` to perform a deep fetch of events. Currently tailored for specific teams (e.g., Bayer Leverkusen) to test complex relational data ingestion (Events, Players).
+
+**Usage**:
+
+```bash
+PYTHONPATH=. POSTGRES_HOST=localhost poetry run python src/scripts/ingest_data.py
+```
+
+### 3. Exploratory Research
+
+**Script**: `src/scripts/research_statsbomb.py`
+
+A utility script to inspect the raw DataFrames returned by `statsbombpy` without writing to the database. Useful for debugging schema changes.
+
+## Workflow
+
+1.  **Run Migrations**: Ensure DB schema is up to date (`alembic upgrade head`).
+2.  **Fetch Metadata**: Run `ingest_matches.py` to populate the `match` table.
+3.  **Ingest Events**: (Coming Soon) Run event-level ingestion for specific match IDs.
