@@ -1,10 +1,10 @@
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class Competition(SQLModel, table=True):
@@ -12,6 +12,8 @@ class Competition(SQLModel, table=True):
                     "autoincrement": False})
     name: str
     gender: str
+
+    matches: List["Match"] = Relationship(back_populates="competition")
 
 
 class Match(SQLModel, table=True):
@@ -24,11 +26,16 @@ class Match(SQLModel, table=True):
     home_score: int
     away_score: int
 
+    competition: Optional[Competition] = Relationship(back_populates="matches")
+    events: List["Event"] = Relationship(back_populates="match")
+
 
 class Player(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     position: Optional[str] = None
+
+    events: List["Event"] = Relationship(back_populates="player")
 
 
 class Event(SQLModel, table=True):
@@ -42,3 +49,6 @@ class Event(SQLModel, table=True):
     location_x: Optional[float] = None
     location_y: Optional[float] = None
     attributes: Dict[str, Any] = Field(default={}, sa_column=Column(JSONB))
+
+    match: Optional[Match] = Relationship(back_populates="events")
+    player: Optional[Player] = Relationship(back_populates="events")
