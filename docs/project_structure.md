@@ -2,6 +2,10 @@
 
 This document outlines the organization of the codebase, located primarily in the `src/` directory.
 
+## Architecture Pattern
+
+We utilize a **Source Layout** (`src/`) pattern. This treats the application code as an installable Python package, preventing import errors and enforcing clear boundaries between the application logic and the runtime scripts.
+
 ## Directory Layout
 
 ```

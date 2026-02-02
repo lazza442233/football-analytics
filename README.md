@@ -32,103 +32,50 @@ A high-performance, asynchronous sports analytics engine designed to ingest, pro
 
 ## ⚡️ Getting Started
 
-### 1. Clone & Install Dependencies
+For a complete guide on setting up the environment, database, and dependencies, please refer to the [**Setup & Installation Guide**](docs/setup_guide.md).
+
+### Quick Start
+
+1.  **Start Infrastructure**: `docker compose up -d`
+2.  **Install Application**: `poetry install` (Installs `src` in editable mode)
+3.  **Run Migrations**: `poetry run alembic upgrade head`
+
+### Data Ingestion
+
+Use the CLI to ingest matches and event data from StatsBomb.
 
 ```bash
-git clone https://github.com/lazza442233/football-analytics.git
-cd football-analytics
-poetry install
-```
-
-### 2. Start Infrastructure
-
-Run the database and API in containers:
-
-```bash
-docker compose up -d --build
-```
-
-> The API will be available at [http://localhost:8000](http://localhost:8000).
-> Interactive Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
-
-### 3. Database Setup (Migrations)
-
-The database starts empty. Apply the schema:
-
-```bash
-# Apply migrations to the Dockerized DB from your local machine
-poetry run alembic upgrade head
-```
-
-### 4. Seed Data (Ingestion)
-
-Ingest data for a specific competition and season using the CLI. For example, to ingest the **2023/2024 Bayer Leverkusen** season (Bundesliga):
-
-```bash
-# Bundesliga (Comp ID: 9), Season 2023/2024 (Season ID: 281)
-# Add --events to also ingest event data (required for analytics)
+# Example: Ingest Bundesliga 23/24 (Matches + Events)
 poetry run python -m src.scripts.ingest_matches --comp-id 9 --season-id 281 --events
 ```
 
-To ingest the **2022 Match Data** (World Cup):
-
-```bash
-# World Cup (Comp ID: 43), Season 2022 (Season ID: 106)
-poetry run python -m src.scripts.ingest_matches --comp-id 43 --season-id 106 --events
-```
-
-This will:
-
-- Fetch match metadata from StatsBomb.
-- Upsert Competition and Match records.
-- Ingest Events for all matches in that season (if `--events` is provided).
+👉 **[See Data Ingestion Docs](docs/data_ingestion.md)** for detailed usage, flags, and available competitions.
 
 ## 💻 Development Workflow
 
-### Database Migrations
+### Code Quality & Testing
 
-When you modify `src/models.py`, generate a new migration:
-
-```bash
-# Generate migration script
-POSTGRES_HOST=localhost poetry run alembic revision --autogenerate -m "description_of_change"
-
-# Apply migration
-POSTGRES_HOST=localhost poetry run alembic upgrade head
-```
-
-### Code Quality
-
-Run the linter and formatter:
+We enforce strict standards using `ruff` and `pytest`.
 
 ```bash
+# Run Linter & Formatter
 poetry run ruff check .
-```
 
-### Testing
-
-Run the test suite (integration tests require the DB running):
-
-```bash
-POSTGRES_HOST=localhost poetry run pytest
+# Run Tests
+poetry run pytest
 ```
 
 ## 📂 Project Structure
 
+We follow a `src`-layout pattern to ensure proper packaging and import behavior.
+
 ```
-├── docs/                # Documentation
-├── migrations/          # Alembic migration scripts
-├── src/                 # Application Source Code
-│   ├── api/             # API Routers & Endpoints
-│   ├── scripts/         # ETL & Utility Scripts
-│   │   ├── ingest_matches.py # CLI for data ingestion
-│   │   └── ...
-│   ├── services/        # Business Logic & Ingestion
-│   ├── config.py        # Environment configuration
-│   ├── database.py      # Async DB setup
-│   ├── main.py          # FastAPI entry point
-│   └── models.py        # SQLModel database schemas
-├── tests/               # Pytest suite
-├── docker-compose.yml   # Infrastructure definition
-└── pyproject.toml       # Dependencies
+src/
+├── api/          # REST API (Routers for Matches, Players, Analytics)
+├── scripts/      # ETL CLI Tools
+├── services/     # Business Logic (Ingestion, Analysis)
+├── models.py     # Database Schema (SQLModel)
+└── ...
 ```
+
+👉 **[Full Project Structure Documentation](docs/project_structure.md)**

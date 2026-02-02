@@ -6,11 +6,37 @@ We will ingest event data from the [StatsBomb Open Data](https://github.com/stat
 
 ## Usage (CLI)
 
-The project includes a robust CLI tool for ingesting data by Competition and Season.
+The project includes a robust CLI tool for ingesting data by Competition and Season. It interacts closely with our `IngestionService` to ensure data consistency.
+
+### Command Structure
+
+Run the ingestion script as a module using Poetry:
 
 ```bash
-# General Syntax
-python -m src.scripts.ingest_matches --comp-id <ID> --season-id <ID>
+# Syntax
+poetry run python -m src.scripts.ingest_matches --comp-id <ID> --season-id <ID> [flags]
+```
+
+### Options
+
+| Flag          | Description                                                                                                                                     |
+| :------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--comp-id`   | **Required.** The StatsBomb Competition ID (e.g., 9 for Bundesliga).                                                                            |
+| `--season-id` | **Required.** The StatsBomb Season ID (e.g., 281 for 23/24).                                                                                    |
+| `--events`    | **Optional.** If set, triggers the ingestion of all _events_ (passes, shots, etc.) for the matches. Without this, only match metadata is saved. |
+
+### Examples
+
+**Ingest only Match Metadata (Fast):**
+
+```bash
+poetry run python -m src.scripts.ingest_matches --comp-id 9 --season-id 281
+```
+
+**Ingest Matches + All Event Data (Full):**
+
+```bash
+poetry run python -m src.scripts.ingest_matches --comp-id 9 --season-id 281 --events
 ```
 
 ### Common Competition IDs
