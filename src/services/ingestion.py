@@ -5,6 +5,7 @@ import uuid
 from typing import Any, Dict, List
 
 import pandas as pd
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlmodel.ext.asyncio.session import AsyncSession
 from statsbombpy import sb
 
@@ -308,10 +309,18 @@ class StatsBombIngestionService:
                     await session.merge(p)
                 await session.commit()
 
-                # Save Events (using add_all for performance,
-                # assuming clean state needed later)
-                session.add_all(event_objects)
-                await session.commit()
+                # Save Events using Upsert (ON CONFLICT DO UPDATE) for Idempotency
+                if event_objects:
+                    # Convert SQLModel objects to dicts for bulk insert
+                    events_data = [e.model_dump() for e in event_objects]
+
+                    stmt = pg_insert(Event).values(events_data)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=['id'],
+                        set_=stmt.excluded
+                    )
+                    await session.exec(stmt)
+                    await session.commit()
 
         except Exception as e:
             logger.error(f"Error ingesting events: {e}")
