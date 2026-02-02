@@ -1,12 +1,14 @@
+import logging
 import math
 import uuid
-import pandas as pd
 from typing import Any, Dict, List
-from statsbombpy import sb
+
+import pandas as pd
 from sqlmodel.ext.asyncio.session import AsyncSession
+from statsbombpy import sb
+
 from src.database import engine
-from src.models import Competition, Match, Event, Player
-import logging
+from src.models import Competition, Event, Match, Player
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,12 @@ pd.options.mode.chained_assignment = None
 
 
 class StatsBombIngestionService:
-    def __init__(self, competition_id: int = 9, season_id: int = 281, team_name: str = "Bayer Leverkusen"):
+    def __init__(
+        self,
+        competition_id: int = 9,
+        season_id: int = 281,
+        team_name: str = "Bayer Leverkusen",
+    ):
         self.competition_id = competition_id
         self.season_id = season_id
         self.team_name = team_name
@@ -98,7 +105,9 @@ class StatsBombIngestionService:
             target_match_row = target_matches.iloc[0]
             match_id = int(target_match_row['match_id'])
             logger.info(
-                f"Targeting Match ID: {match_id} ({target_match_row['home_team']} vs {target_match_row['away_team']})")
+                f"Targeting Match ID: {match_id} "
+                f"({target_match_row['home_team']} vs {target_match_row['away_team']})"
+            )
 
             match_obj = Match(
                 id=match_id,
@@ -153,8 +162,11 @@ class StatsBombIngestionService:
                 clean_attrs = self.clean_dict(row.to_dict())
 
                 # Remove core fields as they are stored in dedicated columns
-                core_fields = ['id', 'match_id', 'minute', 'second', 'type',
-                               'player_id', 'team_id', 'location', 'index', 'period', 'timestamp']
+                core_fields = [
+                    'id', 'match_id', 'minute', 'second', 'type',
+                    'player_id', 'team_id', 'location', 'index',
+                    'period', 'timestamp'
+                ]
                 for field in core_fields:
                     clean_attrs.pop(field, None)
 
@@ -176,7 +188,9 @@ class StatsBombIngestionService:
                 event_objects.append(event_obj)
 
             logger.info(
-                f"Saving {len(player_objects)} players and {len(event_objects)} events to DB...")
+                f"Saving {len(player_objects)} players and "
+                f"{len(event_objects)} events to DB..."
+            )
 
             async with AsyncSession(engine) as session:
                 # Save Players
@@ -184,7 +198,8 @@ class StatsBombIngestionService:
                     await session.merge(p)
                 await session.commit()
 
-                # Save Events (using add_all for performance, assuming clean state/idempotency handling needed later)
+                # Save Events (using add_all for performance,
+                # assuming clean state needed later)
                 session.add_all(event_objects)
                 await session.commit()
 

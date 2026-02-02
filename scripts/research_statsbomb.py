@@ -1,6 +1,7 @@
-from statsbombpy import sb
-import pandas as pd
 from typing import Any
+
+import pandas as pd
+from statsbombpy import sb
 
 pd.set_option('display.max_columns', None)
 
@@ -15,13 +16,16 @@ def research_statsbomb():
 
         print("Sample Competition:\n", competitions.head(1))
 
-        # Pick a competition for further steps (e.g., 2018 World Cup if available, otherwise just the first one)
+        # Pick a competition for further steps (e.g., 2018 World Cup if available,
+        # otherwise just the first one)
         # Using a logic to find a likely available competition
         selected_comp = competitions.iloc[0]
         comp_id = selected_comp['competition_id']
         season_id = selected_comp['season_id']
         print(
-            f"\nSelected Competition ID: {comp_id}, Season ID: {season_id}, Name: {selected_comp['competition_name']}")
+            f"\nSelected Competition ID: {comp_id}, Season ID: {season_id}, "
+            f"Name: {selected_comp['competition_name']}"
+        )
 
     except Exception as e:
         print(f"Error fetching competitions: {e}")

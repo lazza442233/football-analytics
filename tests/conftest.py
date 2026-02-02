@@ -1,14 +1,15 @@
 import os
+
 import pytest
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
-from src.main import app
-from src.database import get_session
 # Ensure your config uses the env var DATABASE_URL
 from src.config import settings
+from src.database import get_session
+from src.main import app
 
 # Override the engine to use the TEST database URL
 # Prioritize env var (for CI) over computed settings
@@ -42,7 +43,9 @@ async def client_fixture(session: AsyncSession):
     app.dependency_overrides[get_session] = get_session_override
 
     # Return the TestClient (Async version)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client
 
     app.dependency_overrides.clear()

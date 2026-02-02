@@ -1,9 +1,10 @@
-from typing import Optional, Dict, Any
-from uuid import UUID
 from datetime import date
-from sqlmodel import SQLModel, Field
+from typing import Any, Dict, Optional
+from uuid import UUID
+
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlmodel import Field, SQLModel
 
 
 class Competition(SQLModel, table=True):

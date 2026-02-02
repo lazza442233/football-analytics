@@ -1,9 +1,11 @@
+import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from sqlalchemy import text
-from src.database import engine
+
 from src.api.routers import players
-import logging
+from src.database import engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
