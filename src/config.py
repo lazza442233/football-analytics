@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str
     POSTGRES_PORT: int = 5432
 
+    LOG_LEVEL: str = "INFO"
+    LOG_JSON: bool = True
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @computed_field

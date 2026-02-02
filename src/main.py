@@ -6,8 +6,10 @@ from sqlalchemy import text
 
 from src.api.routers import analytics, matches, players
 from src.database import engine
+from src.logging_conf import configure_logging
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging before creating the app
+configure_logging()
 logger = logging.getLogger(__name__)
 
 

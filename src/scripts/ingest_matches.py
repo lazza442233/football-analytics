@@ -2,9 +2,10 @@ import argparse
 import asyncio
 import logging
 
+from src.logging_conf import configure_logging
 from src.services.ingestion import StatsBombIngestionService
 
-logging.basicConfig(level=logging.INFO)
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
