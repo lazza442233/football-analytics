@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import math
 import uuid
@@ -41,6 +42,81 @@ class StatsBombIngestionService:
             clean[k] = v
         return clean
 
+    async def ingest_season_matches(
+        self,
+        competition_id: int,
+        season_id: int
+    ) -> bool:
+        """
+        Fetch and upsert all matches for a given competition and season.
+        Uses asyncio.to_thread for non-blocking I/O.
+        """
+        logger.info(
+            f"Starting match ingestion for Comp={competition_id}, Season={season_id}")
+
+        # 1. Fetch & Upsert Competition Metadata
+        try:
+            # Run blocking call in thread
+            comps_df = await asyncio.to_thread(sb.competitions)
+
+            target_comp = comps_df[
+                (comps_df['competition_id'] == competition_id) &
+                (comps_df['season_id'] == season_id)
+            ]
+
+            if target_comp.empty:
+                logger.error(
+                    f"Competition {competition_id}/{season_id} not found.")
+                return False
+
+            comp_row = target_comp.iloc[0]
+            competition = Competition(
+                id=int(comp_row['competition_id']),
+                name=str(comp_row['competition_name']),
+                gender=str(comp_row['competition_gender'])
+            )
+
+            async with AsyncSession(engine) as session:
+                logger.info(f"Upserting Competition: {competition.name}")
+                await session.merge(competition)
+                await session.commit()
+
+        except Exception as e:
+            logger.error(f"Error fetching competition: {e}")
+            raise e
+
+        # 2. Fetch & Upsert Matches
+        try:
+            # Run blocking call in thread
+            matches_df = await asyncio.to_thread(
+                sb.matches,
+                competition_id=competition_id,
+                season_id=season_id
+            )
+
+            logger.info(f"Found {len(matches_df)} matches.")
+
+            async with AsyncSession(engine) as session:
+                for _, row in matches_df.iterrows():
+                    match = Match(
+                        id=int(row['match_id']),
+                        competition_id=competition_id,
+                        match_date=pd.to_datetime(row['match_date']).date(),
+                        home_team=str(row['home_team']),
+                        away_team=str(row['away_team']),
+                        home_score=int(row['home_score']),
+                        away_score=int(row['away_score'])
+                    )
+                    await session.merge(match)
+
+                await session.commit()
+                logger.info("Matches upserted successfully.")
+                return True
+
+        except Exception as e:
+            logger.error(f"Failed to ingest matches: {e}")
+            raise e
+
     async def run(self):
         logger.info("Starting ingestion...")
 
@@ -62,7 +138,13 @@ class StatsBombIngestionService:
     async def ingest_competition(self) -> Competition | None:
         logger.info(f"Fetching competition {self.competition_id}...")
         try:
-            comps: Any = sb.competitions()
+            # Non-blocking fetch
+            comps = await asyncio.to_thread(sb.competitions)
+
+            # Cast to DataFrame for type safety if needed, though usually it is one
+            if not isinstance(comps, pd.DataFrame):
+                comps = pd.DataFrame(comps)
+
             comp_df = comps[(comps['competition_id'] == self.competition_id) & (
                 comps['season_id'] == self.season_id)]
 
@@ -90,8 +172,19 @@ class StatsBombIngestionService:
     async def ingest_match(self, competition: Competition) -> Match | None:
         logger.info(f"Fetching matches for {competition.name}...")
         try:
-            matches: Any = sb.matches(
-                competition_id=self.competition_id, season_id=self.season_id)
+            matches: Any = await asyncio.to_thread(
+                sb.matches,
+                competition_id=self.competition_id,
+                season_id=self.season_id
+            )
+
+            if not isinstance(matches, pd.DataFrame):
+                # statsbombpy can return dicts if credentials fail or other reasons,
+                # but typically returns DF.
+                logger.warning(
+                    f"sb.matches returned {type(matches)}, expected DataFrame")
+                # Attempt conversion if it looks like a list of dicts
+                matches = pd.DataFrame(matches)
 
             target_matches = matches[
                 (matches['home_team'] == self.team_name) | (
@@ -132,7 +225,10 @@ class StatsBombIngestionService:
     async def ingest_events(self, match_id: int):
         logger.info(f"Fetching events for match {match_id}...")
         try:
-            events: Any = sb.events(match_id=match_id)
+            events: Any = await asyncio.to_thread(sb.events, match_id=match_id)
+
+            if not isinstance(events, pd.DataFrame):
+                events = pd.DataFrame(events)
 
             event_objects: List[Event] = []
             player_objects: Dict[int, Player] = {}
