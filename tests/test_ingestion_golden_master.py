@@ -142,8 +142,8 @@ async def test_golden_master_ingestion(session, mock_sb_data):
 
         # Verify DB - Events
         # We expect 2 events
-        result = await session.execute(select(Event).where(Event.match_id == 1001))
-        events = result.scalars().all()
+        result = await session.exec(select(Event).where(Event.match_id == 1001))
+        events = result.all()
         assert len(events) == 2
 
         # Check specific event details (The "Type" check)
