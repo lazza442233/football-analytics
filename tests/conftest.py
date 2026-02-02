@@ -2,9 +2,13 @@ import os
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlmodel import SQLModel
+import src.models  # Register models explicitly
 
 # Ensure your config uses the env var DATABASE_URL
 from src.config import settings
@@ -14,20 +18,26 @@ from src.main import app
 # Override the engine to use the TEST database URL
 # Prioritize env var (for CI) over computed settings
 DB_URL = os.getenv("DATABASE_URL", settings.DATABASE_URL)
-test_engine = create_async_engine(DB_URL, echo=False)
 
 
 @pytest.fixture(name="session")
 async def session_fixture():
+    # Create engine LOCALLY for this test invocation to avoid event loop mismatch
+    test_engine = create_async_engine(DB_URL, echo=False)
+
     # Setup: Create tables
     async with test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
     # Yield Session
-    async_session = sessionmaker(
-        test_engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(
+        test_engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with async_session() as session:
         yield session
+
+    # Cleanup
+    await test_engine.dispose()
 
     # Teardown: Drop tables
     async with test_engine.begin() as conn:
