@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from sqlalchemy import text
 
 from src.api.routers import analytics, ingest, matches, players
@@ -43,7 +44,11 @@ async def lifespan(app: FastAPI):
         await app.state.arq_pool.close()
 
 
-app = FastAPI(title="Football Analytics", lifespan=lifespan)
+app = FastAPI(
+    title="Football Analytics",
+    lifespan=lifespan,
+    default_response_class=ORJSONResponse,
+)
 
 app.include_router(players.router)
 app.include_router(matches.router)

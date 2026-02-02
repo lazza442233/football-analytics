@@ -21,7 +21,8 @@ dependencies = [
     "pandas (>=3.0.0,<4.0.0)",
     "python-json-logger (>=4.0.0,<5.0.0)",
     "arq (>=0.27.0,<0.28.0)",
-    "redis (<6)"
+    "redis (<6)",
+    "orjson (>=3.11.7,<4.0.0)"
 ]
 
 
@@ -42,6 +43,16 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 
+[tool.mypy]
+python_version = "3.12"
+plugins = [
+  "pydantic.mypy"
+]
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+
 [dependency-groups]
 dev = [
     "ruff (>=0.14.14,<0.15.0)",
@@ -50,5 +61,6 @@ dev = [
     "pytest-asyncio (>=1.3.0,<2.0.0)",
     "pytest-cov (>=7.0.0,<8.0.0)",
     "pre-commit (>=4.5.1,<5.0.0)",
-    "setuptools (>=80.10.2,<81.0.0)"
+    "setuptools (>=80.10.2,<81.0.0)",
+    "mypy (>=1.19.1,<2.0.0)"
 ]
