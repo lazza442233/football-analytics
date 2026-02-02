@@ -2,12 +2,9 @@ import os
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 import src.models  # noqa: F401
 from src.config import settings
@@ -29,6 +26,7 @@ async def session_fixture():
         await conn.run_sync(SQLModel.metadata.create_all)
 
     # Yield Session
+    # Use SQLModel's AsyncSession
     async_session = async_sessionmaker(
         test_engine, class_=AsyncSession, expire_on_commit=False
     )

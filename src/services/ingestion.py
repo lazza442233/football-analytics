@@ -91,11 +91,16 @@ class StatsBombIngestionService:
         # 2. Fetch & Upsert Matches
         try:
             # Run blocking call in thread
-            matches_df = await asyncio.to_thread(
+            matches_data = await asyncio.to_thread(
                 sb.matches,
                 competition_id=competition_id,
                 season_id=season_id
             )
+
+            if isinstance(matches_data, pd.DataFrame):
+                matches_df = matches_data
+            else:
+                matches_df = pd.DataFrame(matches_data)
 
             logger.info(f"Found {len(matches_df)} matches.")
 
