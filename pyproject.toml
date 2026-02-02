@@ -34,12 +34,10 @@ target-version = "py312"
 select = ["E", "F", "I"]
 
 [tool.pytest.ini_options]
+pythonpath = "."
 asyncio_mode = "auto"
-pythonpath = ["src"]
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-
-
-
 
 [dependency-groups]
 dev = [
