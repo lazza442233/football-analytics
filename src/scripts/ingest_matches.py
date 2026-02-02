@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+
 from src.services.ingestion import StatsBombIngestionService
 
 logging.basicConfig(level=logging.INFO)
