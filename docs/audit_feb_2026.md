@@ -66,9 +66,9 @@ The **Football Analytics** platform has successfully transitioned from an experi
 
 ### Phase 2: Feature Expansion (Weeks 3-6)
 
-- [ ] **Advanced Metrics**: Implement custom xG (Expected Goals) calculation models instead of relying solely on StatsBomb's pre-calculated values.
-- [ ] **Background Tasks**: Move the heavy ingestion process to a background worker queue (e.g., Celery/Redis or ARQ) to prevent blocking the API.
-- [ ] **Player Search API**: Add fuzzy search logic to find players by partial names.
+- [x] **Background Tasks**: Move the heavy ingestion process to a background worker queue (e.g., Celery/Redis or ARQ) to prevent blocking the API.
+- [ ] **Doppelgänger Engine (Beta)**: Implement vector-similarity search to find players with statistically identical playstyles (e.g., "Find me a striker who plays like 2019-era Firmino").
+- [ ] **"The Oracle" (Beta)**: Integration of a Natural Language Interface (LLM) to allow querying data via plain English (e.g., "Show all counter-attacks ending in shots").
 
 ### Phase 3: Visualization & Deployment (Months 2+)
 
