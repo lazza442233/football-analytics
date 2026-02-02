@@ -10,10 +10,7 @@ from src.models import Event, Match, Player
 async def fetch_season_events(session: AsyncSession, season_id: int) -> pd.DataFrame:
     """
     Fetches all events for a specific season into a Pandas DataFrame.
-    optimized for analytical workload.
     """
-    # We construct a query to select relevant fields
-    # Joining Match to filter by season_id
     query = (
         select(
             Event.id,
@@ -33,19 +30,14 @@ async def fetch_season_events(session: AsyncSession, season_id: int) -> pd.DataF
         .where(Event.player_id.is_not(None))  # type: ignore
     )
 
-    # Execute asynchronously
     result = await session.exec(query)
     data = result.all()
 
     if not data:
         return pd.DataFrame()
 
-    # Convert to DataFrame
-    # SQLAlchemy Row objects keys are derived from column names
     df = pd.DataFrame(data)
 
-    # Ensure correct column names (sometimes they might be ambiguous in joins)
-    # The order matches the select list
     expected_cols = [
         "id",
         "match_id",
@@ -69,7 +61,6 @@ async def fetch_player_season_events(
 ) -> pd.DataFrame:
     """
     Fetches events for a single player in a season.
-    Optimized for single-target analysis.
     """
     query = (
         select(

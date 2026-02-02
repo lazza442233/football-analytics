@@ -106,16 +106,6 @@ def test_aggregate_stats_logic():
 
     stats = etl.aggregate_player_season_stats(df)
 
-    # Player 1 played ~360 mins.
-    # Stats:
-    # Matches: 4.
-    # Passes: 4 (Minute 1) + 4 (Minute 90) = 8 passes total?
-    # Wait, events list defines the rows.
-    # In each loop: 2 passes. Total 8 passes.
-    # Shots: 1 (in match 0).
-
-    # Minutes: 4 * (90-1) = 356? Or heuristic logic: 1..90 => 90.0 per match. Total 360.
-
     row = cast(pd.Series, stats.loc[(2023, 1)])
     assert row["minutes_played"] == 360.0
     assert row["passes_attempted"] == 8
@@ -153,11 +143,7 @@ async def doppelganger_data(session: AsyncSession):
     session.add(p1)
     session.add(p2)
 
-    # Events
-    # Need > 300 minutes.
-    # Let's create multiple matches or one match with HUGE duration?
-    # Minutes are usually 0-120.
-
+    # Create 4 matches to satisfy > 300 minutes threshold
     matches = []
     for m_id in range(1001, 1005):  # 4 matches
         m = Match(
@@ -176,8 +162,6 @@ async def doppelganger_data(session: AsyncSession):
     await session.commit()
 
     # Events for P1 and P2 in all 4 matches (full 90 mins each)
-    # Total 360 mins each.
-
     events = []
     for m in matches:
         # P1

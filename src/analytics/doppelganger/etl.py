@@ -11,11 +11,7 @@ from src.analytics.doppelganger.config import (
 def estimate_minutes_played(events_df: pd.DataFrame) -> pd.Series:
     """
     Estimates minutes played for each player in each season.
-    Approximation: Sum(max_event_minute - min_event_minute) per match.
-    Refined logic:
-    - Caps at 90 + stoppage (approx 100)
-    - Adds buffer for subs (e.g. if events span 5 mins, assume slightly
-      more active time)
+    Approximation: Sum(max_event_minute - min_event_minute) per match with a buffer.
     """
     if events_df.empty:
         return pd.Series(dtype=float)
@@ -24,13 +20,12 @@ def estimate_minutes_played(events_df: pd.DataFrame) -> pd.Series:
         if minutes.empty:
             return 0.0
 
-        # Explicit type casting for mypy strictness
         mn = float(minutes.min())
         mx = float(minutes.max())
 
         # Heuristic: If first action is < 5 and last > 85, likely full match
         if mn < 5 and mx > 85:
-            return 90.0  # Cap standard match
+            return 90.0
 
         diff = mx - mn
         # Add buffer for "active play" outside events
@@ -51,8 +46,6 @@ def estimate_minutes_played(events_df: pd.DataFrame) -> pd.Series:
 def assign_position_group(player_metadata: pd.DataFrame) -> pd.Series:
     """
     Maps raw specific positions to groups (FWD, MID, DEF, GK).
-    Expects player_metadata to have 'id' and 'position'.
-    Returns Series indexed by player_id.
     """
     if "position" not in player_metadata.columns:
         return pd.Series(dtype="object")
@@ -67,7 +60,6 @@ def assign_position_group(player_metadata: pd.DataFrame) -> pd.Series:
 def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculates specific metrics required for the Doppelgänger DNA.
-    Extracts data from the 'attributes' JSON column.
     """
     # 1. Base Type Counts
     base_stats = pd.crosstab(
@@ -75,22 +67,19 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
         columns=events_df["type"],
     )
 
-    # Map raw types to feature names
     mappings = EVENT_TYPE_MAPPINGS
 
-    # Rename and ensure columns exist
     df_metrics = base_stats.rename(columns=mappings)
     for col in mappings.values():
         if col not in df_metrics.columns:
             df_metrics[col] = 0
 
-    # 2. Complex Metrics (xG, Completion Rate) using attributes
+    # 2. Complex Metrics (xG, Completion Rate)
 
     # xG (Expected Goals)
     shot_mask = events_df["type"] == "Shot"
     if shot_mask.any():
         shots = events_df[shot_mask].copy()
-        # Assume flattened 'xg' key for simplicity
         shots["xg"] = shots["attributes"].apply(
             lambda x: x.get("xg", 0.0) if isinstance(x, dict) else 0.0
         )
@@ -105,7 +94,7 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
     pass_mask = events_df["type"] == "Pass"
     if pass_mask.any():
         passes = events_df[pass_mask].copy()
-        # Assume if 'outcome' is missing, it's complete
+        # If 'outcome' is missing, it's complete
         passes["is_complete"] = passes["attributes"].apply(
             lambda x: 1 if (isinstance(x, dict) and x.get("outcome") is None) else 0
         )
@@ -124,14 +113,10 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
         ] / df_metrics["passes_attempted"].replace(0, 1)
 
         # Progressive Passes (Approx: moved ball > 10m towards goal or into box)
-        # We need start (location_x, location_y) and end.
         pass_end = passes["attributes"].apply(
             lambda x: x.get("end_location", []) if isinstance(x, dict) else []
         )
 
-        # We need to vectorized this check if possible, or apply per row
-        # Simple heuristic: end_x is significantly > start_x (assuming x=120 is goal)
-        # StatsBomb x: 0-120. y: 0-80.
         def is_progressive(row, end_loc):
             if not end_loc or len(end_loc) < 2:
                 return 0
@@ -139,15 +124,13 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
             end_x = end_loc[0]
             dist_forward = end_x - start_x
 
-            # Criteria: 10 yards forward (approx 9m? SB coords are yards)
+            # Criteria: 10 yards forward
             # OR into penalty box (x > 102, y between 18 and 62)
             is_into_box = (
                 (end_x >= 102) and (18 <= end_loc[1] <= 62) and (start_x < 102)
             )
             return 1 if (dist_forward >= 10) or is_into_box else 0
 
-        # We can't vectorise easily with mismatching lists, so use apply with the series
-        # Note: pandas apply with axis=1 is slow, but acceptable for Beta volume
         # Optimization: use lists
         passes["end_loc"] = pass_end
         passes["is_progressive"] = passes.apply(
@@ -169,7 +152,6 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
         df_metrics["progressive_passes"] = 0
 
     # Spatial: Average Action Location
-    # Using specific columns now available in repo
     if "location_x" in events_df.columns and "location_y" in events_df.columns:
         spatial = events_df.groupby(["season_id", "player_id"])[
             ["location_x", "location_y"]
@@ -179,7 +161,6 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
         )
         df_metrics = df_metrics.join(spatial, how="left")
     else:
-        # Fallback if columns missing (should not happen with new repo)
         df_metrics["avg_action_x"] = 50.0
         df_metrics["avg_action_y"] = 40.0
 
@@ -187,17 +168,14 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def aggregate_player_season_stats(events_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Aggregates raw events into a player-season stats table.
-    """
     if events_df.empty:
         return pd.DataFrame()
 
-    # 1. Calculate Metrics
     stats = calculate_advanced_metrics(events_df)
-
-    # 2. Estimate Minutes
     minutes = estimate_minutes_played(events_df)
+
+    # Normalize stats columns by 90 minutes
+    # Join minutes
 
     # Join
     stats = stats.join(minutes, how="inner")
