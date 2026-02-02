@@ -10,8 +10,7 @@ src/
 │   └── routers/          # API Endpoints (Players, Matches, etc.)
 │
 ├── scripts/              # Data Ingestion & Utility Scripts
-│   ├── ingest_matches.py # Bulk metadata ingestion
-│   ├── ingest_data.py    # Detailed event ingestion
+│   ├── ingest_matches.py # CLI Tool for ingesting competition data
 │   └── research_statsbomb.py # Development utilities
 │
 ├── services/             # Business Logic Layer
@@ -35,8 +34,7 @@ Encapsulates complex business logic.
 
 Executable modules for operational tasks.
 
-- **`ingest_matches.py`**: The primary entry point for populating the database with historical match data.
-- **`ingest_data.py`**: A service-wrapper for deep-diving into specific match events.
+- **`ingest_matches.py`**: The primary CLI entry point for populating the database with historical match data. Arguments: `--comp-id`, `--season-id`.
 
 ### 3. API (`src/api/`)
 

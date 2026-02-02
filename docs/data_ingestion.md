@@ -4,6 +4,23 @@
 
 We will ingest event data from the [StatsBomb Open Data](https://github.com/statsbomb/open-data) repository using the `statsbombpy` library.
 
+## Usage (CLI)
+
+The project includes a robust CLI tool for ingesting data by Competition and Season.
+
+```bash
+# General Syntax
+python -m src.scripts.ingest_matches --comp-id <ID> --season-id <ID>
+```
+
+### Common Competition IDs
+
+| Competition | Comp ID | Season 2023/24 ID | Season 2022 ID (WC) |
+| :---------- | :------ | :---------------- | :------------------ |
+| Bundesliga  | 9       | 281               | N/A                 |
+| World Cup   | 43      | N/A               | 106                 |
+| La Liga     | 11      | 281               | -                   |
+
 ## Data Hierarchy
 
 StatsBomb organizes data in the following hierarchy:
@@ -37,71 +54,22 @@ We use **SQLModel** to define our database schema, ensuring strict typing and au
 | `home_score`               | `home_score`     | Integer      |
 | `away_score`               | `away_score`     | Integer      |
 
-### 3. `Player` Table (Refined)
+### 3. `Player` Table
 
-We currently have a simple `Player` table. We needs to align IDs.
-| StatsBomb Field | Our DB Column | Type |
-| :--- | :--- | :--- |
-| `player_id` | `id` | Integer (PK) |
-| `player_name` | `name` | String |
-| (Derived) | `current_team_id` | Integer (FK) |
+| StatsBomb Field | Our DB Column | Type         |
+| :-------------- | :------------ | :----------- |
+| `player_id`     | `id`          | Integer (PK) |
+| `player_name`   | `name`        | String       |
+| `position.name` | `position`    | String       |
 
 ### 4. `Event` Table (The "Big Data")
 
-Events have common fields and type-specific fields. We might use a JSONB column for the generic attributes to keep the schema flexible.
+Events are stored with core metadata in columns and complex attributes (xG, coordinates, pass end location) in a **JSONB** `attributes` column. This allows query flexibility without thousands of sparse columns.
 
-| StatsBomb Field   | Our DB Column | Type         |
-| :---------------- | :------------ | :----------- |
-| `id` (UUID)       | `id`          | UUID (PK)    |
-| `match_id`        | `match_id`    | Integer (FK) |
-| `minute`          | `minute`      | Integer      |
-| `second`          | `second`      | Integer      |
-| `type.name`       | `type`        | String       |
-| `player.id`       | `player_id`   | Integer (FK) |
-| `team.id`         | `team_id`     | Integer (FK) |
-| `location`        | `location_x`  | Float        |
-| `location`        | `location_y`  | Float        |
-| (Everything else) | `attributes`  | JSONB        |
-
-## Ingestion Scripts
-
-We have refactored ingestion logic into specific scripts located in `src/scripts/`.
-
-### 1. Ingest Matches (Bulk Metadata)
-
-**Script**: `src/scripts/ingest_matches.py`
-
-This script fetches competition info and all available matches for that competition/season. It upserts `Competition` and `Match` records into the database.
-
-**Usage**:
-
-```bash
-# Needs ENV vars if not set in .env
-PYTHONPATH=. POSTGRES_HOST=localhost poetry run python src/scripts/ingest_matches.py
-```
-
-_Note: Currently hardcoded to World Cup 2022 inside the script. Future parameterization planned._
-
-### 2. Ingest Detailed Data (Service Based)
-
-**Script**: `src/scripts/ingest_data.py`
-
-This script utilizes the `StatsBombIngestionService` to perform a deep fetch of events. Currently tailored for specific teams (e.g., Bayer Leverkusen) to test complex relational data ingestion (Events, Players).
-
-**Usage**:
-
-```bash
-PYTHONPATH=. POSTGRES_HOST=localhost poetry run python src/scripts/ingest_data.py
-```
-
-### 3. Exploratory Research
-
-**Script**: `src/scripts/research_statsbomb.py`
-
-A utility script to inspect the raw DataFrames returned by `statsbombpy` without writing to the database. Useful for debugging schema changes.
-
-## Workflow
-
-1.  **Run Migrations**: Ensure DB schema is up to date (`alembic upgrade head`).
-2.  **Fetch Metadata**: Run `ingest_matches.py` to populate the `match` table.
-3.  **Ingest Events**: (Coming Soon) Run event-level ingestion for specific match IDs.
+| StatsBomb Field   | Our DB Column       | Type      |
+| :---------------- | :------------------ | :-------- |
+| `id`              | `id`                | UUID (PK) |
+| `type.name`       | `type`              | String    |
+| `timestamp`       | `minute` / `second` | Integer   |
+| `location`        | `location_x/y`      | Float     |
+| _Everything else_ | `attributes`        | **JSONB** |

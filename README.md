@@ -59,17 +59,25 @@ POSTGRES_HOST=localhost poetry run alembic upgrade head
 
 ### 4. Seed Data (Ingestion)
 
-Ingest the 2023/2024 **Bayer Leverkusen** season data (Bundesliga) as a sample:
+Ingest data for a specific competition and season using the CLI. For example, to ingest the **2023/2024 Bayer Leverkusen** season (Bundesliga):
 
 ```bash
-POSTGRES_HOST=localhost poetry run python -m scripts.ingest_data
+# Bundesliga (Comp ID: 9), Season 2023/2024 (Season ID: 281)
+POSTGRES_HOST=localhost poetry run python -m src.scripts.ingest_matches --comp-id 9 --season-id 281
+```
+
+To ingest the **2022 Match Data** (World Cup):
+
+```bash
+# World Cup (Comp ID: 43), Season 2022 (Season ID: 106)
+POSTGRES_HOST=localhost poetry run python -m src.scripts.ingest_matches --comp-id 43 --season-id 106
 ```
 
 This will:
 
-- Fetch data from StatsBomb API.
-- Upsert Competitions, Matches, and Players.
-- Insert ~4,000 Events into the database.
+- Fetch match metadata from StatsBomb.
+- Upsert Competition and Match records.
+- Ingest Events for all matches in that season.
 
 ## 💻 Development Workflow
 
@@ -106,17 +114,16 @@ POSTGRES_HOST=localhost poetry run pytest
 ```
 ├── docs/                # Documentation
 ├── migrations/          # Alembic migration scripts
-├── scripts/             # ETL and maintenance scripts
-│   ├── ingest_data.py   # Main ingestion script
-│   └── ...
 ├── src/                 # Application Source Code
 │   ├── api/             # API Routers & Endpoints
+│   ├── scripts/         # ETL & Utility Scripts
+│   │   ├── ingest_matches.py # CLI for data ingestion
+│   │   └── ...
 │   ├── services/        # Business Logic & Ingestion
 │   ├── config.py        # Environment configuration
 │   ├── database.py      # Async DB setup
 │   ├── main.py          # FastAPI entry point
 │   └── models.py        # SQLModel database schemas
-
 ├── tests/               # Pytest suite
 ├── docker-compose.yml   # Infrastructure definition
 └── pyproject.toml       # Dependencies
