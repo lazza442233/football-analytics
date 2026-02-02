@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import text
 
-from src.api.routers import players
+from src.api.routers import players, matches
 from src.database import engine
 
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Football Analytics", lifespan=lifespan)
 
 app.include_router(players.router)
+app.include_router(matches.router)
 
 
 @app.get("/health")
