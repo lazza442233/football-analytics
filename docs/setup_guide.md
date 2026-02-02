@@ -17,6 +17,7 @@
 
 2.  **Install Dependencies**
     This will create a virtual environment and install the `src` package in editable mode.
+
     ```bash
     poetry install
     ```

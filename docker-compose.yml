@@ -30,11 +30,44 @@ services:
       - .env
     environment:
       - POSTGRES_HOST=db
+      - REDIS_HOST=redis
 
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     command: ['uvicorn', 'src.main:app', '--host', '0.0.0.0', '--port', '8000', '--reload']
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build: .
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_HOST=redis
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ['arq', 'src.worker.WorkerSettings', '--watch', 'src']
+    stop_grace_period: 60s
 
 volumes:
   postgres_data:

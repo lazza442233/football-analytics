@@ -5,6 +5,7 @@ A high-performance, asynchronous sports analytics engine designed to ingest, pro
 ## 🚀 Features
 
 - **Async-First Architecture**: Fully asynchronous API and Database interactions for high throughput.
+- **Background Workers**: Heavy ingestion tasks are offloaded to an asynchronous job queue (ARQ/Redis) to ensure API responsiveness.
 - **Data Ingestion Pipeline**: robust ETL scripts to ingest Competitions, Matches, Players, and structured Events from StatsBomb.
 - **Modern Database Schema**: SQLModel (SQLAlchemy + Pydantic) ORM with Alembic for migrations.
 - **JSONB Storage**: Flexible storage for complex event attributes (xG, pass angles, etc.) using PostgreSQL JSONB types.
@@ -20,6 +21,7 @@ A high-performance, asynchronous sports analytics engine designed to ingest, pro
 - **Web Framework**: [FastAPI](https://fastapi.tiangolo.com/)
 - **Database**: PostgreSQL 15 (AsyncPG driver)
 - **ORM**: [SQLModel](https://sqlmodel.tiangolo.com/)
+- **Task Queue**: [ARQ](https://arq-docs.helpmanual.io/) with Redis
 - **Migrations**: Alembic (Async configured)
 - **Package Manager**: [Poetry](https://python-poetry.org/)
 - **Data Source**: [statsbombpy](https://github.com/statsbomb/statsbombpy)

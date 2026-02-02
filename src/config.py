@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str
     POSTGRES_PORT: int = 5432
 
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+
     LOG_LEVEL: str = "INFO"
     LOG_JSON: bool = True
 
