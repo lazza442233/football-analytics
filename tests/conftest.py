@@ -8,9 +8,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlmodel import SQLModel
-import src.models  # Register models explicitly
 
-# Ensure your config uses the env var DATABASE_URL
+import src.models  # noqa: F401
 from src.config import settings
 from src.database import get_session
 from src.main import app
