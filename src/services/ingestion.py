@@ -42,6 +42,24 @@ class StatsBombIngestionService:
             clean[k] = v
         return clean
 
+    def _create_match_record(
+        self,
+        row: pd.Series,
+        competition_id: int,
+        season_id: int
+    ) -> Match:
+        """Helper to map a pandas row to a Match model."""
+        return Match(
+            id=int(row['match_id']),
+            competition_id=competition_id,
+            season_id=season_id,
+            match_date=pd.to_datetime(row['match_date']).date(),
+            home_team=str(row['home_team']),
+            away_team=str(row['away_team']),
+            home_score=int(row['home_score']),
+            away_score=int(row['away_score'])
+        )
+
     async def ingest_season_matches(
         self,
         competition_id: int,
@@ -54,33 +72,16 @@ class StatsBombIngestionService:
         logger.info(
             f"Starting match ingestion for Comp={competition_id}, Season={season_id}")
 
+        self.competition_id = competition_id
+        self.season_id = season_id
+
         # 1. Fetch & Upsert Competition Metadata
         try:
-            # Run blocking call in thread
-            comps_df = await asyncio.to_thread(sb.competitions)
-
-            target_comp = comps_df[
-                (comps_df['competition_id'] == competition_id) &
-                (comps_df['season_id'] == season_id)
-            ]
-
-            if target_comp.empty:
+            competition = await self.ingest_competition()
+            if not competition:
                 logger.error(
                     f"Competition {competition_id}/{season_id} not found.")
                 return False
-
-            comp_row = target_comp.iloc[0]
-            competition = Competition(
-                id=int(comp_row['competition_id']),
-                name=str(comp_row['competition_name']),
-                gender=str(comp_row['competition_gender'])
-            )
-
-            async with AsyncSession(engine) as session:
-                logger.info(f"Upserting Competition: {competition.name}")
-                await session.merge(competition)
-                await session.commit()
-
         except Exception as e:
             logger.error(f"Error fetching competition: {e}")
             raise e
@@ -98,15 +99,8 @@ class StatsBombIngestionService:
 
             async with AsyncSession(engine) as session:
                 for _, row in matches_df.iterrows():
-                    match = Match(
-                        id=int(row['match_id']),
-                        competition_id=competition_id,
-                        season_id=season_id,
-                        match_date=pd.to_datetime(row['match_date']).date(),
-                        home_team=str(row['home_team']),
-                        away_team=str(row['away_team']),
-                        home_score=int(row['home_score']),
-                        away_score=int(row['away_score'])
+                    match = self._create_match_record(
+                        row, competition_id, season_id
                     )
                     await session.merge(match)
 
@@ -139,6 +133,12 @@ class StatsBombIngestionService:
     async def ingest_competition(self) -> Competition | None:
         logger.info(f"Fetching competition {self.competition_id}...")
         try:
+            comp_id = self.competition_id
+            seas_id = self.season_id
+
+            if comp_id is None or seas_id is None:
+                raise ValueError("Competition ID and Season ID must be set.")
+
             # Non-blocking fetch
             comps = await asyncio.to_thread(sb.competitions)
 
@@ -146,8 +146,8 @@ class StatsBombIngestionService:
             if not isinstance(comps, pd.DataFrame):
                 comps = pd.DataFrame(comps)
 
-            comp_df = comps[(comps['competition_id'] == self.competition_id) & (
-                comps['season_id'] == self.season_id)]
+            comp_df = comps[(comps['competition_id'] == comp_id) & (
+                comps['season_id'] == seas_id)]
 
             if comp_df.empty:
                 logger.warning("Competition not found.")
@@ -173,10 +173,16 @@ class StatsBombIngestionService:
     async def ingest_match(self, competition: Competition) -> Match | None:
         logger.info(f"Fetching matches for {competition.name}...")
         try:
+            comp_id = self.competition_id
+            seas_id = self.season_id
+
+            if comp_id is None or seas_id is None:
+                raise ValueError("Competition ID and Season ID must be set.")
+
             matches: Any = await asyncio.to_thread(
                 sb.matches,
-                competition_id=self.competition_id,
-                season_id=self.season_id
+                competition_id=comp_id,
+                season_id=seas_id
             )
 
             if not isinstance(matches, pd.DataFrame):
@@ -197,24 +203,14 @@ class StatsBombIngestionService:
                 return None
 
             target_match_row = target_matches.iloc[0]
-            match_id = int(target_match_row['match_id'])
-            logger.info(
-                f"Targeting Match ID: {match_id} "
-                f"({target_match_row['home_team']} vs {target_match_row['away_team']})"
+
+            match_obj = self._create_match_record(
+                target_match_row, competition.id, seas_id
             )
 
-            season_id = self.season_id if self.season_id is not None else 0
-
-            match_obj = Match(
-                id=match_id,
-                competition_id=competition.id,
-                season_id=season_id,
-                match_date=pd.to_datetime(
-                    target_match_row['match_date']).date(),
-                home_team=str(target_match_row['home_team']),
-                away_team=str(target_match_row['away_team']),
-                home_score=int(target_match_row['home_score']),
-                away_score=int(target_match_row['away_score'])
+            logger.info(
+                f"Targeting Match ID: {match_obj.id} "
+                f"({match_obj.home_team} vs {match_obj.away_team})"
             )
 
             async with AsyncSession(engine) as session:
