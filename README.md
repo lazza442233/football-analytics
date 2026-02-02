@@ -53,8 +53,7 @@ The database starts empty. Apply the schema:
 
 ```bash
 # Apply migrations to the Dockerized DB from your local machine
-# We override POSTGRES_HOST to localhost since Docker maps port 5432
-POSTGRES_HOST=localhost poetry run alembic upgrade head
+poetry run alembic upgrade head
 ```
 
 ### 4. Seed Data (Ingestion)
@@ -63,14 +62,14 @@ Ingest data for a specific competition and season using the CLI. For example, to
 
 ```bash
 # Bundesliga (Comp ID: 9), Season 2023/2024 (Season ID: 281)
-POSTGRES_HOST=localhost poetry run python -m src.scripts.ingest_matches --comp-id 9 --season-id 281
+poetry run python -m src.scripts.ingest_matches --comp-id 9 --season-id 281
 ```
 
 To ingest the **2022 Match Data** (World Cup):
 
 ```bash
 # World Cup (Comp ID: 43), Season 2022 (Season ID: 106)
-POSTGRES_HOST=localhost poetry run python -m src.scripts.ingest_matches --comp-id 43 --season-id 106
+poetry run python -m src.scripts.ingest_matches --comp-id 43 --season-id 106
 ```
 
 This will:
