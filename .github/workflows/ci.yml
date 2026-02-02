@@ -49,4 +49,8 @@ jobs:
         env:
           # Note: We use the service container's localhost port
           DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/test_db
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: test_db
+          POSTGRES_HOST: localhost
         run: poetry run pytest
