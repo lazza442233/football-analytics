@@ -8,6 +8,10 @@ A high-performance, asynchronous sports analytics engine designed to ingest, pro
 - **Data Ingestion Pipeline**: robust ETL scripts to ingest Competitions, Matches, Players, and structured Events from StatsBomb.
 - **Modern Database Schema**: SQLModel (SQLAlchemy + Pydantic) ORM with Alembic for migrations.
 - **JSONB Storage**: Flexible storage for complex event attributes (xG, pass angles, etc.) using PostgreSQL JSONB types.
+- **Search & Analytics**:
+  - Full-text search usage of `Match` events.
+  - Granular event filtering (e.g., "Passes in the final third").
+  - **Season Aggregates**: Aggregate stats for players across an entire season (Pass Completion, xG, etc.).
 - **Containerized**: Fully Dockerized development environment with hot-reloading.
 
 ## 🛠 Tech Stack
@@ -62,21 +66,22 @@ Ingest data for a specific competition and season using the CLI. For example, to
 
 ```bash
 # Bundesliga (Comp ID: 9), Season 2023/2024 (Season ID: 281)
-poetry run python -m src.scripts.ingest_matches --comp-id 9 --season-id 281
+# Add --events to also ingest event data (required for analytics)
+poetry run python -m src.scripts.ingest_matches --comp-id 9 --season-id 281 --events
 ```
 
 To ingest the **2022 Match Data** (World Cup):
 
 ```bash
 # World Cup (Comp ID: 43), Season 2022 (Season ID: 106)
-poetry run python -m src.scripts.ingest_matches --comp-id 43 --season-id 106
+poetry run python -m src.scripts.ingest_matches --comp-id 43 --season-id 106 --events
 ```
 
 This will:
 
 - Fetch match metadata from StatsBomb.
 - Upsert Competition and Match records.
-- Ingest Events for all matches in that season.
+- Ingest Events for all matches in that season (if `--events` is provided).
 
 ## 💻 Development Workflow
 

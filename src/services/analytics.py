@@ -1,14 +1,81 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from sqlmodel import Float, cast, func, select
+from sqlmodel import Float, cast, col, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.models import Event
+from src.models import Event, Match
 
 
 class AnalyticsService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def get_player_season_stats(
+        self,
+        player_id: int,
+        season_id: int
+    ) -> Dict[str, Any]:
+        """
+        Aggregates stats for a player across a specific season.
+        """
+        # count(distinct match_id)
+        # count(passes)
+        # count(successful_passes) -> pass_outcome IS NULL
+        # sum(xg) -> shot_statsbomb_xg
+
+        stmt = (
+            select(
+                func.count(func.distinct(col(Match.id))),
+                func.count(col(Event.id)).filter(col(Event.type) == "Pass"),
+                func.count(col(Event.id)).filter(
+                    (col(Event.type) == "Pass") &
+                    (~func.jsonb_exists(col(Event.attributes), "pass_outcome"))
+                ),
+                func.sum(
+                    cast(col(Event.attributes)[
+                         "shot_statsbomb_xg"].astext, Float)
+                )
+            )
+            .join(Match, col(Match.id) == col(Event.match_id))
+            .where(col(Event.player_id) == player_id)
+            .where(col(Match.season_id) == season_id)
+        )
+
+        result = await self.session.exec(stmt)
+        row = result.first()
+
+        if not row:
+            return {
+                "player_id": player_id,
+                "season_id": season_id,
+                "matches_played": 0,
+                "total_passes": 0,
+                "successful_passes": 0,
+                "pass_completion_rate": 0.0,
+                "total_xg": 0.0
+            }
+
+        matches_played, total_passes, successful_passes, total_xg = row
+
+        matches_played = matches_played or 0
+        total_passes = total_passes or 0
+        successful_passes = successful_passes or 0
+        total_xg = round(total_xg, 2) if total_xg else 0.0
+
+        pass_completion_rate = 0.0
+        if total_passes > 0:
+            pass_completion_rate = round(
+                (successful_passes / total_passes) * 100, 2)
+
+        return {
+            "player_id": player_id,
+            "season_id": season_id,
+            "matches_played": matches_played,
+            "total_passes": total_passes,
+            "successful_passes": successful_passes,
+            "pass_completion_rate": pass_completion_rate,
+            "total_xg": total_xg
+        }
 
     async def search_events(
         self,

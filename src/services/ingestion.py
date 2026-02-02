@@ -63,7 +63,8 @@ class StatsBombIngestionService:
     async def ingest_season_matches(
         self,
         competition_id: int,
-        season_id: int
+        season_id: int,
+        ingest_events: bool = False
     ) -> bool:
         """
         Fetch and upsert all matches for a given competition and season.
@@ -105,8 +106,21 @@ class StatsBombIngestionService:
                     await session.merge(match)
 
                 await session.commit()
-                logger.info("Matches upserted successfully.")
-                return True
+
+            logger.info("Matches upserted successfully.")
+
+            if ingest_events:
+                logger.info("Starting event ingestion for all matches...")
+                for _, row in matches_df.iterrows():
+                    match_id = int(row['match_id'])
+                    try:
+                        # Check existence later; trusting process for now.
+                        await self.ingest_events(match_id)
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to ingest events for match {match_id}: {e}")
+
+            return True
 
         except Exception as e:
             logger.error(f"Failed to ingest matches: {e}")
