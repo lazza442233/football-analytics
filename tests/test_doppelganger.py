@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -115,7 +116,7 @@ def test_aggregate_stats_logic():
 
     # Minutes: 4 * (90-1) = 356? Or heuristic logic: 1..90 => 90.0 per match. Total 360.
 
-    row = stats.loc[(2023, 1)]
+    row = cast(pd.Series, stats.loc[(2023, 1)])
     assert row["minutes_played"] == 360.0
     assert row["passes_attempted"] == 8
     assert row["shots_total"] == 1
@@ -258,13 +259,16 @@ async def test_build_season_dataset(session: AsyncSession, doppelganger_data):
     # Check Position Groups
     # P1 (CF) -> FWD
     # P2 (RW) -> FWD
-    assert df.loc[(2023, 10)]["position_group"] == "FWD"
-    assert df.loc[(2023, 20)]["position_group"] == "FWD"
+    p1_stats = cast(pd.Series, df.loc[(2023, 10)])
+    p2_stats = cast(pd.Series, df.loc[(2023, 20)])
+
+    assert p1_stats["position_group"] == "FWD"
+    assert p2_stats["position_group"] == "FWD"
 
     # Check Mins
     # 4 matches * 90 = 360
-    assert df.loc[(2023, 10)]["minutes_played"] == 360.0
-    assert df.loc[(2023, 20)]["minutes_played"] == 360.0
+    assert p1_stats["minutes_played"] == 360.0
+    assert p2_stats["minutes_played"] == 360.0
 
 
 @pytest.mark.asyncio
