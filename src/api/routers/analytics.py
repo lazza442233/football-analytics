@@ -1,4 +1,3 @@
-
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,8 +22,7 @@ class MatchXGSummary(BaseModel):
 
 @router.get("/{match_id}/analytics/summary", response_model=MatchXGSummary)
 async def get_match_xg_summary(
-    match_id: int,
-    session: AsyncSession = Depends(get_session)
+    match_id: int, session: AsyncSession = Depends(get_session)
 ):
     match_stmt = select(Match).where(Match.id == match_id)
     match_result = await session.exec(match_stmt)
@@ -41,7 +39,7 @@ async def get_match_xg_summary(
         home_team=match.home_team,
         away_team=match.away_team,
         home_xg=round(xg_map.get(match.home_team, 0.0), 2),
-        away_xg=round(xg_map.get(match.away_team, 0.0), 2)
+        away_xg=round(xg_map.get(match.away_team, 0.0), 2),
     )
 
 
@@ -49,11 +47,12 @@ async def get_match_xg_summary(
 async def search_match_events(
     match_id: int,
     type: Optional[str] = Query(
-        None, description="Filter by event type (e.g., 'Pass', 'Shot')"),
+        None, description="Filter by event type (e.g., 'Pass', 'Shot')"
+    ),
     player_id: Optional[int] = Query(None, description="Filter by Player ID"),
     min_minute: Optional[int] = Query(None, description="Minimum minute"),
     max_minute: Optional[int] = Query(None, description="Maximum minute"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     analytics_service = AnalyticsService(session)
     events = await analytics_service.search_events(
@@ -61,6 +60,6 @@ async def search_match_events(
         event_type=type,
         player_id=player_id,
         min_minute=min_minute,
-        max_minute=max_minute
+        max_minute=max_minute,
     )
     return events

@@ -24,7 +24,7 @@ async def analytics_data(session: AsyncSession):
         home_team="Team A",
         away_team="Team B",
         home_score=1,
-        away_score=0
+        away_score=0,
     )
     session.add(match)
 
@@ -33,46 +33,64 @@ async def analytics_data(session: AsyncSession):
 
     # Event 1: Shot by Team A (0.5 xG)
     e1 = Event(
-        id=uuid.uuid4(), match_id=100, minute=10, second=0, type="Shot",
-        player_id=50, team_id=10, location_x=90.0, location_y=40.0,
-        attributes={
-            "shot_statsbomb_xg": 0.5,
-            "team": "Team A",
-            "outcome_name": "Goal"
-        }
+        id=uuid.uuid4(),
+        match_id=100,
+        minute=10,
+        second=0,
+        type="Shot",
+        player_id=50,
+        team_id=10,
+        location_x=90.0,
+        location_y=40.0,
+        attributes={"shot_statsbomb_xg": 0.5, "team": "Team A", "outcome_name": "Goal"},
     )
     session.add(e1)
 
     # Event 2: Shot by Team B (0.3 xG)
     e2 = Event(
-        id=uuid.uuid4(), match_id=100, minute=20, second=0, type="Shot",
-        player_id=None, team_id=11, location_x=90.0, location_y=40.0,
-        attributes={
-            "shot_statsbomb_xg": 0.3,
-            "team": "Team B"
-        }
+        id=uuid.uuid4(),
+        match_id=100,
+        minute=20,
+        second=0,
+        type="Shot",
+        player_id=None,
+        team_id=11,
+        location_x=90.0,
+        location_y=40.0,
+        attributes={"shot_statsbomb_xg": 0.3, "team": "Team B"},
     )
     session.add(e2)
 
     # Event 3: Pass by Player One (Successful)
     e3 = Event(
-        id=uuid.uuid4(), match_id=100, minute=30, second=0, type="Pass",
-        player_id=50, team_id=10, location_x=50.0, location_y=50.0,
+        id=uuid.uuid4(),
+        match_id=100,
+        minute=30,
+        second=0,
+        type="Pass",
+        player_id=50,
+        team_id=10,
+        location_x=50.0,
+        location_y=50.0,
         attributes={
             "team": "Team A"
             # No pass_outcome means successful
-        }
+        },
     )
     session.add(e3)
 
     # Event 4: Pass by Player One (Failed)
     e4 = Event(
-        id=uuid.uuid4(), match_id=100, minute=35, second=0, type="Pass",
-        player_id=50, team_id=10, location_x=50.0, location_y=50.0,
-        attributes={
-            "team": "Team A",
-            "pass_outcome": "Incomplete"
-        }
+        id=uuid.uuid4(),
+        match_id=100,
+        minute=35,
+        second=0,
+        type="Pass",
+        player_id=50,
+        team_id=10,
+        location_x=50.0,
+        location_y=50.0,
+        attributes={"team": "Team A", "pass_outcome": "Incomplete"},
     )
     session.add(e4)
 

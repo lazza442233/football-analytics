@@ -11,9 +11,7 @@ class AnalyticsService:
         self.session = session
 
     async def get_player_season_stats(
-        self,
-        player_id: int,
-        season_id: int
+        self, player_id: int, season_id: int
     ) -> Dict[str, Any]:
         """
         Aggregates stats for a player across a specific season.
@@ -28,13 +26,12 @@ class AnalyticsService:
                 func.count(func.distinct(col(Match.id))),
                 func.count(col(Event.id)).filter(col(Event.type) == "Pass"),
                 func.count(col(Event.id)).filter(
-                    (col(Event.type) == "Pass") &
-                    (~func.jsonb_exists(col(Event.attributes), "pass_outcome"))
+                    (col(Event.type) == "Pass")
+                    & (~func.jsonb_exists(col(Event.attributes), "pass_outcome"))
                 ),
                 func.sum(
-                    cast(col(Event.attributes)[
-                         "shot_statsbomb_xg"].astext, Float)
-                )
+                    cast(col(Event.attributes)["shot_statsbomb_xg"].astext, Float)
+                ),
             )
             .join(Match, col(Match.id) == col(Event.match_id))
             .where(col(Event.player_id) == player_id)
@@ -52,7 +49,7 @@ class AnalyticsService:
                 "total_passes": 0,
                 "successful_passes": 0,
                 "pass_completion_rate": 0.0,
-                "total_xg": 0.0
+                "total_xg": 0.0,
             }
 
         matches_played, total_passes, successful_passes, total_xg = row
@@ -64,8 +61,7 @@ class AnalyticsService:
 
         pass_completion_rate = 0.0
         if total_passes > 0:
-            pass_completion_rate = round(
-                (successful_passes / total_passes) * 100, 2)
+            pass_completion_rate = round((successful_passes / total_passes) * 100, 2)
 
         return {
             "player_id": player_id,
@@ -74,7 +70,7 @@ class AnalyticsService:
             "total_passes": total_passes,
             "successful_passes": successful_passes,
             "pass_completion_rate": pass_completion_rate,
-            "total_xg": total_xg
+            "total_xg": total_xg,
         }
 
     async def search_events(

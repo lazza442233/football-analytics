@@ -8,8 +8,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 
 class Competition(SQLModel, table=True):
-    id: int = Field(primary_key=True, sa_column_kwargs={
-                    "autoincrement": False})
+    id: int = Field(primary_key=True, sa_column_kwargs={"autoincrement": False})
     name: str
     gender: str
 
@@ -17,8 +16,7 @@ class Competition(SQLModel, table=True):
 
 
 class Match(SQLModel, table=True):
-    id: int = Field(primary_key=True, sa_column_kwargs={
-                    "autoincrement": False})
+    id: int = Field(primary_key=True, sa_column_kwargs={"autoincrement": False})
     competition_id: int = Field(foreign_key="competition.id")
     season_id: int
     match_date: date

@@ -44,35 +44,30 @@ class StatsBombIngestionService:
         return clean
 
     def _create_match_record(
-        self,
-        row: pd.Series,
-        competition_id: int,
-        season_id: int
+        self, row: pd.Series, competition_id: int, season_id: int
     ) -> Match:
         """Helper to map a pandas row to a Match model."""
         return Match(
-            id=int(row['match_id']),
+            id=int(row["match_id"]),
             competition_id=competition_id,
             season_id=season_id,
-            match_date=pd.to_datetime(row['match_date']).date(),
-            home_team=str(row['home_team']),
-            away_team=str(row['away_team']),
-            home_score=int(row['home_score']),
-            away_score=int(row['away_score'])
+            match_date=pd.to_datetime(row["match_date"]).date(),
+            home_team=str(row["home_team"]),
+            away_team=str(row["away_team"]),
+            home_score=int(row["home_score"]),
+            away_score=int(row["away_score"]),
         )
 
     async def ingest_season_matches(
-        self,
-        competition_id: int,
-        season_id: int,
-        ingest_events: bool = False
+        self, competition_id: int, season_id: int, ingest_events: bool = False
     ) -> bool:
         """
         Fetch and upsert all matches for a given competition and season.
         Uses asyncio.to_thread for non-blocking I/O.
         """
         logger.info(
-            f"Starting match ingestion for Comp={competition_id}, Season={season_id}")
+            f"Starting match ingestion for Comp={competition_id}, Season={season_id}"
+        )
 
         self.competition_id = competition_id
         self.season_id = season_id
@@ -81,8 +76,7 @@ class StatsBombIngestionService:
         try:
             competition = await self.ingest_competition()
             if not competition:
-                logger.error(
-                    f"Competition {competition_id}/{season_id} not found.")
+                logger.error(f"Competition {competition_id}/{season_id} not found.")
                 return False
         except Exception as e:
             logger.error(f"Error fetching competition: {e}")
@@ -92,9 +86,7 @@ class StatsBombIngestionService:
         try:
             # Run blocking call in thread
             matches_data = await asyncio.to_thread(
-                sb.matches,
-                competition_id=competition_id,
-                season_id=season_id
+                sb.matches, competition_id=competition_id, season_id=season_id
             )
 
             if isinstance(matches_data, pd.DataFrame):
@@ -106,9 +98,7 @@ class StatsBombIngestionService:
 
             async with AsyncSession(engine) as session:
                 for _, row in matches_df.iterrows():
-                    match = self._create_match_record(
-                        row, competition_id, season_id
-                    )
+                    match = self._create_match_record(row, competition_id, season_id)
                     await session.merge(match)
 
                 await session.commit()
@@ -118,13 +108,14 @@ class StatsBombIngestionService:
             if ingest_events:
                 logger.info("Starting event ingestion for all matches...")
                 for _, row in matches_df.iterrows():
-                    match_id = int(row['match_id'])
+                    match_id = int(row["match_id"])
                     try:
                         # Check existence later; trusting process for now.
                         await self.ingest_events(match_id)
                     except Exception as e:
                         logger.error(
-                            f"Failed to ingest events for match {match_id}: {e}")
+                            f"Failed to ingest events for match {match_id}: {e}"
+                        )
 
             return True
 
@@ -166,8 +157,9 @@ class StatsBombIngestionService:
             if not isinstance(comps, pd.DataFrame):
                 comps = pd.DataFrame(comps)
 
-            comp_df = comps[(comps['competition_id'] == comp_id) & (
-                comps['season_id'] == seas_id)]
+            comp_df = comps[
+                (comps["competition_id"] == comp_id) & (comps["season_id"] == seas_id)
+            ]
 
             if comp_df.empty:
                 logger.warning("Competition not found.")
@@ -175,9 +167,9 @@ class StatsBombIngestionService:
 
             comp_row = comp_df.iloc[0]
             competition = Competition(
-                id=int(comp_row['competition_id']),
-                name=str(comp_row['competition_name']),
-                gender=str(comp_row['competition_gender'])
+                id=int(comp_row["competition_id"]),
+                name=str(comp_row["competition_name"]),
+                gender=str(comp_row["competition_gender"]),
             )
 
             logger.info(f"Saving competition: {competition.name}")
@@ -200,22 +192,21 @@ class StatsBombIngestionService:
                 raise ValueError("Competition ID and Season ID must be set.")
 
             matches: Any = await asyncio.to_thread(
-                sb.matches,
-                competition_id=comp_id,
-                season_id=seas_id
+                sb.matches, competition_id=comp_id, season_id=seas_id
             )
 
             if not isinstance(matches, pd.DataFrame):
                 # statsbombpy can return dicts if credentials fail or other reasons,
                 # but typically returns DF.
                 logger.warning(
-                    f"sb.matches returned {type(matches)}, expected DataFrame")
+                    f"sb.matches returned {type(matches)}, expected DataFrame"
+                )
                 # Attempt conversion if it looks like a list of dicts
                 matches = pd.DataFrame(matches)
 
             target_matches = matches[
-                (matches['home_team'] == self.team_name) | (
-                    matches['away_team'] == self.team_name)
+                (matches["home_team"] == self.team_name)
+                | (matches["away_team"] == self.team_name)
             ]
 
             if target_matches.empty:
@@ -257,19 +248,20 @@ class StatsBombIngestionService:
 
             for _, row in events.iterrows():
                 # Handle Player
-                p_id = row.get('player_id')
+                p_id = row.get("player_id")
                 if pd.notna(p_id):
                     p_id = int(p_id)
                     if p_id not in player_objects:
                         player_objects[p_id] = Player(
                             id=p_id,
-                            name=str(row['player']),
-                            position=str(row.get('position', None)) if pd.notna(
-                                row.get('position')) else None
+                            name=str(row["player"]),
+                            position=str(row.get("position", None))
+                            if pd.notna(row.get("position"))
+                            else None,
                         )
 
                 # Handle Location
-                loc = row.get('location')
+                loc = row.get("location")
                 loc_x, loc_y = None, None
                 if isinstance(loc, list) and len(loc) >= 2:
                     loc_x, loc_y = float(loc[0]), float(loc[1])
@@ -279,27 +271,36 @@ class StatsBombIngestionService:
 
                 # Remove core fields as they are stored in dedicated columns
                 core_fields = [
-                    'id', 'match_id', 'minute', 'second', 'type',
-                    'player_id', 'team_id', 'location', 'index',
-                    'period', 'timestamp'
+                    "id",
+                    "match_id",
+                    "minute",
+                    "second",
+                    "type",
+                    "player_id",
+                    "team_id",
+                    "location",
+                    "index",
+                    "period",
+                    "timestamp",
                 ]
                 for field in core_fields:
                     clean_attrs.pop(field, None)
 
-                event_uuid = uuid.UUID(str(row['id']))
+                event_uuid = uuid.UUID(str(row["id"]))
 
                 event_obj = Event(
                     id=event_uuid,
                     match_id=match_id,
-                    minute=int(row['minute']),
-                    second=int(row['second']),
-                    type=str(row['type']),
-                    player_id=int(row['player_id']) if pd.notna(
-                        row.get('player_id')) else None,
-                    team_id=int(row['team_id']),
+                    minute=int(row["minute"]),
+                    second=int(row["second"]),
+                    type=str(row["type"]),
+                    player_id=int(row["player_id"])
+                    if pd.notna(row.get("player_id"))
+                    else None,
+                    team_id=int(row["team_id"]),
                     location_x=loc_x,
                     location_y=loc_y,
-                    attributes=clean_attrs
+                    attributes=clean_attrs,
                 )
                 event_objects.append(event_obj)
 
@@ -321,8 +322,7 @@ class StatsBombIngestionService:
 
                     stmt = pg_insert(Event).values(events_data)
                     stmt = stmt.on_conflict_do_update(
-                        index_elements=['id'],
-                        set_=stmt.excluded
+                        index_elements=["id"], set_=stmt.excluded
                     )
                     await session.exec(stmt)
                     await session.commit()

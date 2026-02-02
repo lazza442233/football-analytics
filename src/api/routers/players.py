@@ -35,5 +35,6 @@ async def get_player_season_stats(
     stats = await service.get_player_season_stats(player_id, season_id)
     if not stats:
         raise HTTPException(
-            status_code=404, detail="Stats not found for player in this season")
+            status_code=404, detail="Stats not found for player in this season"
+        )
     return stats

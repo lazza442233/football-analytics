@@ -14,69 +14,75 @@ def mock_sb_data():
     """Golden Master Data Fixtures"""
 
     # Competition Data
-    competitions_df = pd.DataFrame([{
-        "competition_id": 999,
-        "season_id": 1,
-        "competition_name": "Golden League",
-        "competition_gender": "male",
-        "country_name": "Testland"
-    }])
+    competitions_df = pd.DataFrame(
+        [
+            {
+                "competition_id": 999,
+                "season_id": 1,
+                "competition_name": "Golden League",
+                "competition_gender": "male",
+                "country_name": "Testland",
+            }
+        ]
+    )
 
     # Match Data
-    matches_df = pd.DataFrame([{
-        "match_id": 1001,
-        "match_date": "2024-01-01",
-        "kick_off": "15:00:00.000",
-        "home_team": "Golden Team A",
-        "away_team": "Golden Team B",
-        "home_score": 2,
-        "away_score": 1,
-        "competition": 999,
-        "season": 1
-    }])
+    matches_df = pd.DataFrame(
+        [
+            {
+                "match_id": 1001,
+                "match_date": "2024-01-01",
+                "kick_off": "15:00:00.000",
+                "home_team": "Golden Team A",
+                "away_team": "Golden Team B",
+                "home_score": 2,
+                "away_score": 1,
+                "competition": 999,
+                "season": 1,
+            }
+        ]
+    )
 
     # Events Data
     # 1. Start of match
     # 2. Pass
     # 3. Shot (Goal)
-    events_df = pd.DataFrame([
-        {
-            "id": str(uuid.uuid4()),
-            "match_id": 1001,
-            "minute": 0,
-            "second": 1,
-            "type": "Pass",
-            "player_id": 10,
-            "player": "Player A1",
-            "position": "Midfielder",
-            "team_id": 100,
-            "team": "Golden Team A",
-            "location": [60.0, 40.0],
-            "pass_length": 15.0,
-            "pass_angle": 0.5
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "match_id": 1001,
-            "minute": 25,
-            "second": 30,
-            "type": "Shot",
-            "player_id": 11,
-            "player": "Player A2",
-            "position": "Striker",
-            "team_id": 100,
-            "team": "Golden Team A",
-            "location": [105.0, 35.0],
-            "shot_statsbomb_xg": 0.35,
-            "shot_outcome": "Goal"
-        }
-    ])
+    events_df = pd.DataFrame(
+        [
+            {
+                "id": str(uuid.uuid4()),
+                "match_id": 1001,
+                "minute": 0,
+                "second": 1,
+                "type": "Pass",
+                "player_id": 10,
+                "player": "Player A1",
+                "position": "Midfielder",
+                "team_id": 100,
+                "team": "Golden Team A",
+                "location": [60.0, 40.0],
+                "pass_length": 15.0,
+                "pass_angle": 0.5,
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "match_id": 1001,
+                "minute": 25,
+                "second": 30,
+                "type": "Shot",
+                "player_id": 11,
+                "player": "Player A2",
+                "position": "Striker",
+                "team_id": 100,
+                "team": "Golden Team A",
+                "location": [105.0, 35.0],
+                "shot_statsbomb_xg": 0.35,
+                "shot_outcome": "Goal",
+            },
+        ]
+    )
 
-    return {
-        "competitions": competitions_df,
-        "matches": matches_df,
-        "events": events_df
-    }
+    return {"competitions": competitions_df, "matches": matches_df, "events": events_df}
 
 
 @pytest.mark.asyncio
@@ -89,16 +95,13 @@ async def test_golden_master_ingestion(session, mock_sb_data):
 
     # 1. Setup Service
     service = StatsBombIngestionService(
-        competition_id=999,
-        season_id=1,
-        team_name="Golden Team A"
+        competition_id=999, season_id=1, team_name="Golden Team A"
     )
 
     # 2. Patch External API calls
     # We patch 'src.services.ingestion.sb' because that's where it's imported
     with patch("src.services.ingestion.sb") as mock_sb:
-        mock_sb.competitions = MagicMock(
-            return_value=mock_sb_data["competitions"])
+        mock_sb.competitions = MagicMock(return_value=mock_sb_data["competitions"])
         # sb.matches and sb.events are called as functions, return DataFrames
         mock_sb.matches = MagicMock(return_value=mock_sb_data["matches"])
         mock_sb.events = MagicMock(return_value=mock_sb_data["events"])
