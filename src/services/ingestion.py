@@ -203,9 +203,12 @@ class StatsBombIngestionService:
                 f"({target_match_row['home_team']} vs {target_match_row['away_team']})"
             )
 
+            season_id = self.season_id if self.season_id is not None else 0
+
             match_obj = Match(
                 id=match_id,
                 competition_id=competition.id,
+                season_id=season_id,
                 match_date=pd.to_datetime(
                     target_match_row['match_date']).date(),
                 home_team=str(target_match_row['home_team']),
