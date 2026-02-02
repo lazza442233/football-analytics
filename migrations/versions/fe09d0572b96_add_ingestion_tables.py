@@ -33,6 +33,7 @@ def upgrade() -> None:
     op.create_table('match',
                     sa.Column('id', sa.Integer(), nullable=False),
                     sa.Column('competition_id', sa.Integer(), nullable=False),
+                    sa.Column('season_id', sa.Integer(), nullable=False),
                     sa.Column('match_date', sa.Date(), nullable=False),
                     sa.Column('home_team', sqlmodel.sql.sqltypes.AutoString(),
                               nullable=False),

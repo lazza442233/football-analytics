@@ -20,9 +20,9 @@ pd.options.mode.chained_assignment = None
 class StatsBombIngestionService:
     def __init__(
         self,
-        competition_id: int = 9,
-        season_id: int = 281,
-        team_name: str = "Bayer Leverkusen",
+        competition_id: int | None = None,
+        season_id: int | None = None,
+        team_name: str | None = None,
     ):
         self.competition_id = competition_id
         self.season_id = season_id
@@ -101,6 +101,7 @@ class StatsBombIngestionService:
                     match = Match(
                         id=int(row['match_id']),
                         competition_id=competition_id,
+                        season_id=season_id,
                         match_date=pd.to_datetime(row['match_date']).date(),
                         home_team=str(row['home_team']),
                         away_team=str(row['away_team']),
