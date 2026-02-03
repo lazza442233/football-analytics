@@ -1,5 +1,3 @@
-from typing import Any
-
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -33,7 +31,7 @@ def build_feature_frame(stats_df: pd.DataFrame) -> pd.DataFrame:
     # Median Fill: Rates & Spatial (Avoid skewing distribution with 0s)
 
     zeros_cols = [c for c in FEATURES_BETA if "rate" not in c and "avg" not in c]
-    median_cols = ["pass_completion_rate", "avg_action_x", "avg_action_y"]
+    median_cols = [c for c in FEATURES_BETA if "rate" in c or "avg" in c]
 
     # Fill 'Absence' metrics with 0.0
     df[zeros_cols] = df[zeros_cols].fillna(0.0)
@@ -54,7 +52,7 @@ def build_feature_frame(stats_df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def fit_scaler(df_features: pd.DataFrame) -> Any:
+def fit_scaler(df_features: pd.DataFrame) -> StandardScaler:
     """
     Fits a StandardScaler to the feature matrix.
     Returns the fitted scaler object.
