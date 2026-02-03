@@ -5,7 +5,7 @@ Configuration constants for the Doppelgänger Engine.
 from typing import Dict, List
 
 # Data filtering
-MIN_MINUTES: int = 300
+MIN_MINUTES: int = 180
 
 # Cosine Query
 SIMILARITY_FLOOR: float = 0.70

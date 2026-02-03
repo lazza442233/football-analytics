@@ -325,11 +325,16 @@ class StatsBombIngestionService:
                     # Convert SQLModel objects to dicts for bulk insert
                     events_data = [e.model_dump() for e in event_objects]
 
-                    stmt = pg_insert(Event).values(events_data)
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=["id"], set_=stmt.excluded
-                    )
-                    await session.exec(stmt)
+                    # Process in batches to avoid "too many arguments" error
+                    batch_size = 500
+                    for i in range(0, len(events_data), batch_size):
+                        batch = events_data[i : i + batch_size]
+                        stmt = pg_insert(Event).values(batch)
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=["id"], set_=stmt.excluded
+                        )
+                        await session.exec(stmt)
+
                     await session.commit()
 
         except Exception as e:

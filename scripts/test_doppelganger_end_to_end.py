@@ -12,7 +12,6 @@ from sqlmodel import SQLModel
 from src.analytics.doppelganger import etl, registry, repo, train
 from src.database import engine
 from src.models import Player
-from src.services.ingestion import StatsBombIngestionService
 
 sys.path.append(os.getcwd())
 
@@ -41,18 +40,19 @@ async def run_end_to_end_test():
         # (9, 281, "Bundesliga 2023/2024")
     ]
 
-    ingest_service = StatsBombIngestionService()
-
-    for comp_id, season_id, name in targets:
-        logger.info(f"--- Ingesting {name} ---")
-        # ingest_events=True is critical
-        try:
-            await ingest_service.ingest_season_matches(
-                comp_id, season_id, ingest_events=True
-            )
-        except Exception as e:
-            logger.error(f"Ingestion failed for {name}: {e}")
-            # Continue to next or fail? Let's try to continue if one works.
+    # 1. Ingestion (Skipped - assumed run via scripts/ingest_data.py)
+    # ingest_service = StatsBombIngestionService()
+    #
+    # for comp_id, season_id, name in targets:
+    #     logger.info(f"--- Ingesting {name} ---")
+    #     # ingest_events=True is critical
+    #     try:
+    #         await ingest_service.ingest_season_matches(
+    #             comp_id, season_id, ingest_events=True
+    #         )
+    #     except Exception as e:
+    #         logger.error(f"Ingestion failed for {name}: {e}")
+    #         # Continue to next or fail? Let's try to continue if one works.
 
     # 2. ETL & Training
     logger.info("--- Starting Doppelgänger Setup ---")
@@ -169,36 +169,59 @@ async def run_end_to_end_test():
     logger.info(registry.registry.status)
 
     # 4. Verification Check
-    # Pick a random player from the registry and find neighbors
     logger.info("--- Verification: Find Neighbors ---")
 
-    # Let's try to find a known player in the registry bundles
-    found = False
     for group, bundle in registry.registry._bundles.items():
-        if found:
-            break
-        for i, vec in enumerate(bundle.entities):
-            # Just pick the first one
-            # Access the underlying matrix stored in the sklearn object
-            target_vec = bundle.knn._fit_X[i]
-            neighbors = bundle.knn.kneighbors(
-                [target_vec],
-                n_neighbors=min(5, len(bundle.entities)),
-                return_distance=True,
+        if not bundle.entities:
+            continue
+
+        logger.info(f"\n--- Results for Group: {group} ---")
+
+        # Pick the player with the most minutes to ensure a stable query
+        # entities is a list of PlayerSeasonVector objects
+        best_query_idx = -1
+        max_mins = -1.0
+
+        for i, ent in enumerate(bundle.entities):
+            if ent.minutes_played > max_mins:
+                max_mins = ent.minutes_played
+                best_query_idx = i
+
+        if best_query_idx == -1:
+            continue
+
+        query_entity = bundle.entities[best_query_idx]
+        target_vec = bundle.knn._fit_X[best_query_idx]
+
+        # Query
+        neighbors = bundle.knn.kneighbors(
+            [target_vec],
+            n_neighbors=min(6, len(bundle.entities)),  # Get 5 neighbors + self
+            return_distance=True,
+        )
+
+        indices = neighbors[1][0]
+        distances = neighbors[0][0]
+
+        logger.info(
+            f"Query Player: {query_entity.name} "
+            f"(Min: {query_entity.minutes_played:.1f})"
+        )
+        logger.info(
+            f"{'Neighbor Name':<25} | {'Min':<6} | {'Dist':<6} | {'Similarity':<6}"
+        )
+        logger.info("-" * 55)
+
+        for idx, dist in zip(indices, distances):
+            neighbor = bundle.entities[idx]
+            similarity = 1.0 - dist
+            # Skip self if distance is 0 (or close)
+            prefix = ">> " if dist < 0.0001 else "   "
+            logger.info(
+                f"{prefix}{neighbor.name:<22} | "
+                f"{neighbor.minutes_played:<6.1f} | "
+                f"{dist:<6.4f} | {similarity:<6.4f}"
             )
-
-            logger.info(f"Query Player: {vec.player_id} ({group})")
-            indices = neighbors[1][0]
-            distances = neighbors[0][0]
-
-            for idx, dist in zip(indices, distances):
-                neighbor_meta = bundle.entities[idx]
-                logger.info(
-                    f"   -> Neighbor: {neighbor_meta.player_id} (Dist: {dist:.4f})"
-                )
-
-            found = True
-            break
 
     logger.info("End-to-End Test Complete.")
 
