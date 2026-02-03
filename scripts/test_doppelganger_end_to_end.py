@@ -10,6 +10,7 @@ import pandas as pd
 from sqlmodel import SQLModel
 
 from src.analytics.doppelganger import etl, registry, repo, train
+from src.analytics.doppelganger.explain import explain_match
 from src.database import engine
 from src.models import Player
 
@@ -210,18 +211,30 @@ async def run_end_to_end_test():
         logger.info(
             f"{'Neighbor Name':<25} | {'Min':<6} | {'Dist':<6} | {'Similarity':<6}"
         )
-        logger.info("-" * 55)
+        logger.info("-" * 80)
 
         for idx, dist in zip(indices, distances):
             neighbor = bundle.entities[idx]
             similarity = 1.0 - dist
             # Skip self if distance is 0 (or close)
             prefix = ">> " if dist < 0.0001 else "   "
+
+            # --- Explanation Logic ---
+            match_vec = bundle.knn._fit_X[idx]
+            explanation = explain_match(target_vec, match_vec, bundle.feature_names)
+
+            strengths_str = ", ".join(explanation["shared_strengths"])
+            diff_str = explanation["key_difference"]
+
             logger.info(
                 f"{prefix}{neighbor.name:<22} | "
                 f"{neighbor.minutes_played:<6.1f} | "
                 f"{dist:<6.4f} | {similarity:<6.4f}"
             )
+            if dist >= 0.0001:  # Don't explain self
+                logger.info(f"      Shared: {strengths_str}")
+                logger.info(f"      Diff:   {diff_str}")
+                logger.info("-" * 40)
 
     logger.info("End-to-End Test Complete.")
 
