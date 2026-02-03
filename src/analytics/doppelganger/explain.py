@@ -32,17 +32,27 @@ def explain_match(
     SIGNIFICANCE_THRESHOLD = 0.8
 
     # 1. Identify Shared Strengths
+    candidates = []
+
     for i, feature in enumerate(feature_names):
         t_val = target_z[i]
         m_val = match_z[i]
+        combined_magnitude = abs(t_val) + abs(m_val)
 
         # Check for high positive correlation (both significantly above average)
         if t_val > SIGNIFICANCE_THRESHOLD and m_val > SIGNIFICANCE_THRESHOLD:
-            shared_strengths.append(f"High {feature}")
+            candidates.append((combined_magnitude, f"High {feature}"))
 
         # Check for high negative correlation (both significantly below average)
         elif t_val < -SIGNIFICANCE_THRESHOLD and m_val < -SIGNIFICANCE_THRESHOLD:
-            shared_strengths.append(f"Low {feature}")
+            candidates.append((combined_magnitude, f"Low {feature}"))
+
+    # Sort candidates by combined magnitude (descending)
+    # to show most defining traits first
+    candidates.sort(key=lambda x: x[0], reverse=True)
+
+    # Take top 3
+    shared_strengths = [c[1] for c in candidates[:3]]
 
     # Fallback if no specific extremes are shared
     if not shared_strengths:

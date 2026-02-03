@@ -70,6 +70,19 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
         if col not in df_metrics.columns:
             df_metrics[col] = 0
 
+    # Helper for progressive actions
+    def is_progressive(row, end_loc):
+        if not end_loc or len(end_loc) < 2:
+            return 0
+        start_x = row["location_x"] or 0
+        end_x = end_loc[0]
+        dist_forward = end_x - start_x
+
+        # Criteria: 10 yards forward
+        # OR into penalty box (x > 102, y between 18 and 62)
+        is_into_box = (end_x >= 102) and (18 <= end_loc[1] <= 62) and (start_x < 102)
+        return 1 if (dist_forward >= 10) or is_into_box else 0
+
     # 2. Complex Metrics (xG, Completion Rate)
 
     # xG (Expected Goals)
@@ -113,20 +126,6 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
             lambda x: x.get("end_location", []) if isinstance(x, dict) else []
         )
 
-        def is_progressive(row, end_loc):
-            if not end_loc or len(end_loc) < 2:
-                return 0
-            start_x = row["location_x"] or 0
-            end_x = end_loc[0]
-            dist_forward = end_x - start_x
-
-            # Criteria: 10 yards forward
-            # OR into penalty box (x > 102, y between 18 and 62)
-            is_into_box = (
-                (end_x >= 102) and (18 <= end_loc[1] <= 62) and (start_x < 102)
-            )
-            return 1 if (dist_forward >= 10) or is_into_box else 0
-
         # Optimization: use lists
         passes["end_loc"] = pass_end
         passes["is_progressive"] = passes.apply(
@@ -142,10 +141,75 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
             {"progressive_passes": 0}
         )
 
+        # Key Passes (Shot Assists)
+        passes["is_key_pass"] = passes["attributes"].apply(
+            lambda x: 1
+            if (
+                isinstance(x, dict)
+                and (x.get("shot_assist") or x.get("assisted_shot_id"))
+            )
+            else 0
+        )
+        key_pass_stats = (
+            passes.groupby(["season_id", "player_id"])["is_key_pass"]
+            .sum()
+            .rename("shot_assists")
+        )
+        df_metrics = df_metrics.join(key_pass_stats, how="left").fillna(
+            {"shot_assists": 0}
+        )
+
     else:
         df_metrics["passes_completed"] = 0
         df_metrics["pass_completion_rate"] = 0.0
         df_metrics["progressive_passes"] = 0
+        df_metrics["shot_assists"] = 0
+
+    # Carries
+    carry_mask = events_df["type"] == "Carry"
+    if carry_mask.any():
+        carries = events_df[carry_mask].copy()
+
+        # Extract end_location
+        carries["end_loc"] = carries["attributes"].apply(
+            lambda x: x.get("end_location", []) if isinstance(x, dict) else []
+        )
+
+        # Progressive Carries
+        # Same logic as passes: 10m forward or into box
+        carries["is_progressive"] = carries.apply(
+            lambda r: is_progressive(r, r["end_loc"]), axis=1
+        )
+        prog_carries_stats = (
+            carries.groupby(["season_id", "player_id"])["is_progressive"]
+            .sum()
+            .rename("progressive_carries")
+        )
+        df_metrics = df_metrics.join(prog_carries_stats, how="left").fillna(
+            {"progressive_carries": 0}
+        )
+
+        # Carry Distance (Total yardage)
+        def calc_distance(row):
+            if not row["end_loc"] or len(row["end_loc"]) < 2:
+                return 0.0
+            dx = row["end_loc"][0] - (row["location_x"] or 0)
+            dy = row["end_loc"][1] - (row["location_y"] or 0)
+            return (dx**2 + dy**2) ** 0.5
+
+        carries["distance"] = carries.apply(calc_distance, axis=1)
+        dist_stats = (
+            carries.groupby(["season_id", "player_id"])["distance"]
+            .sum()
+            .rename("carry_distance")
+        )
+        df_metrics = df_metrics.join(dist_stats, how="left").fillna(
+            {"carry_distance": 0.0}
+        )
+
+    else:
+        df_metrics["progressive_carries"] = 0
+        df_metrics["carry_distance"] = 0.0
 
     # Spatial: Average Action Location
     if "location_x" in events_df.columns and "location_y" in events_df.columns:

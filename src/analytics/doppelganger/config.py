@@ -65,7 +65,10 @@ EVENT_TYPE_MAPPINGS: Dict[str, str] = {
 NORMALIZE_PER_90_COLS: List[str] = [
     "passes_attempted",
     "passes_completed",
-    "progressive_passes",  # Added
+    "progressive_passes",
+    "shot_assists",
+    "progressive_carries",
+    "carry_distance",
     "shots_total",
     "xg_total",
     "dribbles_attempted",
