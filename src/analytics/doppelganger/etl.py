@@ -50,11 +50,7 @@ def assign_position_group(player_metadata: pd.DataFrame) -> pd.Series:
     if "position" not in player_metadata.columns:
         return pd.Series(dtype="object")
 
-    return (
-        player_metadata.set_index("id")["position"]
-        .map(POSITION_MAPPINGS)
-        .fillna("UNKNOWN")
-    )
+    return player_metadata["position"].map(POSITION_MAPPINGS).fillna("UNKNOWN")
 
 
 def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:

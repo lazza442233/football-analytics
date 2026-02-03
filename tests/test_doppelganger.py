@@ -51,9 +51,9 @@ def test_assign_position_group():
     )
 
     mapping = etl.assign_position_group(df)
-    assert mapping.loc[1] == "GK"
-    assert mapping.loc[2] == "FWD"
-    assert mapping.loc[3] == "UNKNOWN"
+    assert mapping.loc[0] == "GK"
+    assert mapping.loc[1] == "FWD"
+    assert mapping.loc[2] == "UNKNOWN"
 
 
 def test_aggregate_stats_logic():

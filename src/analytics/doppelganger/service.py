@@ -39,6 +39,7 @@ class DoppelgangerService:
             return pd.DataFrame()
 
         # Enrich with Position Groups
+        player_meta_df = player_meta_df.set_index("id")
         position_map = etl.assign_position_group(player_meta_df)
 
         # Reset index to make join easy, or map directly

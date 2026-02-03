@@ -304,6 +304,11 @@ class StatsBombIngestionService:
                 )
                 event_objects.append(event_obj)
 
+            # Deduplicate by ID within the batch to avoid "Cardinality violation"
+            # in ON CONFLICT if the source data contains duplicates.
+            unique_events = {e.id: e for e in event_objects}
+            event_objects = list(unique_events.values())
+
             logger.info(
                 f"Saving {len(player_objects)} players and "
                 f"{len(event_objects)} events to DB..."
