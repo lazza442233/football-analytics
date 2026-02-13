@@ -63,5 +63,5 @@ def fit_scaler(df_features: pd.DataFrame) -> StandardScaler:
     if df_features.empty:
         return scaler
 
-    scaler.fit(df_features[FEATURES_BETA])
+    scaler.fit(df_features)
     return scaler

@@ -122,8 +122,9 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
         ] / df_metrics["passes_attempted"].replace(0, 1)
 
         # Progressive Passes (Approx: moved ball > 10m towards goal or into box)
+        # Fix: key is 'pass_end_location', not 'end_location'
         pass_end = passes["attributes"].apply(
-            lambda x: x.get("end_location", []) if isinstance(x, dict) else []
+            lambda x: x.get("pass_end_location", []) if isinstance(x, dict) else []
         )
 
         # Optimization: use lists
@@ -146,7 +147,7 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
             lambda x: 1
             if (
                 isinstance(x, dict)
-                and (x.get("shot_assist") or x.get("assisted_shot_id"))
+                and (x.get("pass_shot_assist") or x.get("pass_assisted_shot_id"))
             )
             else 0
         )
@@ -171,8 +172,9 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
         carries = events_df[carry_mask].copy()
 
         # Extract end_location
+        # Fix: key is 'carry_end_location'
         carries["end_loc"] = carries["attributes"].apply(
-            lambda x: x.get("end_location", []) if isinstance(x, dict) else []
+            lambda x: x.get("carry_end_location", []) if isinstance(x, dict) else []
         )
 
         # Progressive Carries

@@ -56,11 +56,19 @@ def train_model_for_group(
     # 2. Build Feature Matrix X
     df_features = preprocess.build_feature_frame(df_group)
 
-    # 3. Fit Scaler
-    scaler = preprocess.fit_scaler(df_features)
+    # Customize features based on position (Beta-safe Fix)
+    active_features = list(features.FEATURES_BETA)
+    if position_group == "GK":
+        # Remove carry metrics for GKs as they are noisy/irrelevant
+        logger.info("Dropping carry metrics for GK to improve stability.")
+        exclude = ["progressive_carries_per90", "carry_distance_per90"]
+        active_features = [f for f in active_features if f not in exclude]
+
+    # 3. Fit Scaler (Subset features first)
+    scaler = preprocess.fit_scaler(df_features[active_features])
 
     # 4. Transform Matrix
-    X_scaled = scaler.transform(df_features[features.FEATURES_BETA])
+    X_scaled = scaler.transform(df_features[active_features])
 
     # 5. Fit KNN
     # n_neighbors: We need at least MAX_LIMIT + 1 (for self)
@@ -77,7 +85,7 @@ def train_model_for_group(
         entities=entities,
         scaler=scaler,
         knn=knn,
-        feature_names=features.FEATURES_BETA,
+        feature_names=active_features,
     )
 
     logger.info(f"Trained KNN for {position_group} with {n_samples} vectors.")
