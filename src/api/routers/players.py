@@ -1,5 +1,9 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database import get_session
@@ -17,6 +21,25 @@ class PlayerSeasonStats(BaseModel):
     successful_passes: int
     pass_completion_rate: float
     total_xg: float
+
+
+@router.get("/search", response_model=List[Player])
+async def search_players(name: str, session: AsyncSession = Depends(get_session)):
+    """
+    Search players by name (case-insensitive partial match).
+    """
+    if not name:
+        return []
+
+    # Use unaccent() to handle "mbappe" matching "Mbappé"
+    # Requires: CREATE EXTENSION IF NOT EXISTS unaccent;
+    statement = (
+        select(Player)
+        .where(func.unaccent(Player.name).ilike(func.unaccent(f"%{name}%")))
+        .limit(10)
+    )
+    result = await session.exec(statement)
+    return result.all()
 
 
 @router.post("", response_model=Player)
