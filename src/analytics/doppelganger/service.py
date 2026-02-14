@@ -3,7 +3,14 @@ from typing import Any, Dict, Optional
 import pandas as pd
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.analytics.doppelganger import etl, repo, schemas
+from src.analytics.doppelganger import etl, explain, preprocess, repo, schemas
+from src.analytics.doppelganger.config import MIN_MINUTES, SIMILARITY_FLOOR
+from src.analytics.doppelganger.errors import (
+    InsufficientDataError,
+    NoMatchesError,
+    PlayerSeasonNotFoundError,
+)
+from src.analytics.doppelganger.registry import registry
 
 
 class DoppelgangerService:
@@ -97,6 +104,137 @@ class DoppelgangerService:
     ) -> schemas.DoppelgangerResponse:
         """
         Phase 2: Use Vectorizer to find nearest neighbors.
-        (Not yet implemented)
         """
-        raise NotImplementedError("Phase 2: Vectorization Engine not yet implemented")
+        # 1. Get target player stats (their "DNA")
+        player_stats = await self.get_player_stats(query.player_id, query.season_id)
+
+        if not player_stats:
+            raise PlayerSeasonNotFoundError(query.player_id, query.season_id)
+
+        # 2. Extract position group and validate minutes
+        position_group = query.position_group or player_stats.get(
+            "position_group", "UNKNOWN"
+        )
+        minutes_played = player_stats.get("minutes_played", 0.0)
+
+        if minutes_played < MIN_MINUTES:
+            raise InsufficientDataError(
+                query.player_id, int(minutes_played), MIN_MINUTES
+            )
+
+        # 3. Load the trained model bundle for this position group
+        bundle = registry.get(position_group)
+
+        if not bundle:
+            # No model trained for this position group
+            return schemas.DoppelgangerResponse(
+                meta=schemas.DoppelgangerMeta(
+                    model_version=pd.Timestamp.now(),
+                    position_group=position_group,
+                    vector_count=0,
+                ),
+                target=schemas.TargetPlayer(
+                    name="Unknown",
+                    season_id=query.season_id,
+                    position=position_group,  # type: ignore
+                ),
+                similar_players=[],
+            )
+
+        # 4. Build feature frame for target player
+        # Convert dict to DataFrame row
+        target_df = pd.DataFrame([player_stats])
+        target_features = preprocess.build_feature_frame(target_df)
+
+        if target_features.empty:
+            raise InsufficientDataError(
+                query.player_id, int(minutes_played), MIN_MINUTES
+            )
+
+        # 5. Scale the target player's features
+        target_scaled = bundle.scaler.transform(target_features)
+
+        # 6. Find k nearest neighbors
+        # Request k+1 to account for the target player potentially being in the dataset
+        k = min(query.limit + 1, bundle.vector_count)
+        distances, indices = bundle.knn.kneighbors(target_scaled, n_neighbors=k)
+
+        # Flatten arrays (since we only have one query point)
+        distances = distances[0]
+        indices = indices[0]
+
+        # 7. Get the fitted vectors from the knn model for generating explanations
+        # The NearestNeighbors model stores the fitted data in _fit_X
+        fitted_vectors = bundle.knn._fit_X
+
+        # 8. Filter out the target player if they appear in results
+        # and apply similarity threshold
+        similar_players: list[schemas.SimilarPlayerResult] = []
+
+        for idx, distance in zip(indices, distances):
+            entity = bundle.entities[idx]
+
+            # Skip if this is the target player themselves
+            if (
+                entity.player_id == query.player_id
+                and entity.season_id == query.season_id
+            ):
+                continue
+
+            # Convert distance to similarity score
+            # For cosine metric: similarity = 1 - distance
+            similarity_score = 1.0 - distance
+
+            # Apply similarity threshold
+            if similarity_score < SIMILARITY_FLOOR:
+                continue
+
+            # Get the pre-computed scaled vector for this match
+            match_scaled = fitted_vectors[idx]
+
+            # Generate explanation
+            explanation_dict = explain.explain_match(
+                target_scaled[0], match_scaled, bundle.feature_names
+            )
+
+            similar_players.append(
+                schemas.SimilarPlayerResult(
+                    player_id=entity.player_id,
+                    name=entity.name,
+                    season_id=entity.season_id,
+                    similarity_score=round(similarity_score, 3),
+                    explanation=schemas.SimilarPlayerExplanation(
+                        shared_strengths=explanation_dict["shared_strengths"],  # type: ignore
+                        key_difference=explanation_dict.get("key_difference"),  # type: ignore
+                    ),
+                )
+            )
+
+            # Stop once we have enough results
+            if len(similar_players) >= query.limit:
+                break
+
+        # 9. Handle case where no matches found
+        if not similar_players:
+            raise NoMatchesError(SIMILARITY_FLOOR)
+
+        # 10. Build and return response
+        # Try to get target player name from metadata
+        target_name = "Unknown"
+        player_meta = await repo.fetch_player_metadata(self.session, [query.player_id])
+        if not player_meta.empty:
+            target_name = player_meta.iloc[0]["name"]
+
+        return schemas.DoppelgangerResponse(
+            meta=schemas.DoppelgangerMeta(
+                model_version=bundle.timestamp,
+                position_group=position_group,
+                vector_count=bundle.vector_count,
+            ),
+            target=schemas.TargetPlayer(
+                name=target_name,
+                season_id=query.season_id,
+                position=position_group,  # type: ignore
+            ),
+            similar_players=similar_players,
+        )

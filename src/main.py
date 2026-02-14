@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from sqlalchemy import text
 
-from src.api.routers import analytics, ingest, matches, players
+from src.api.routers import analytics, doppelganger, ingest, matches, players
 from src.config import settings
 from src.database import engine
 from src.logging_conf import configure_logging
@@ -53,6 +53,7 @@ app = FastAPI(
 app.include_router(players.router)
 app.include_router(matches.router)
 app.include_router(analytics.router)
+app.include_router(doppelganger.router)
 app.include_router(ingest.router)
 
 
