@@ -73,6 +73,19 @@ class AnalyticsService:
             "total_xg": total_xg,
         }
 
+    async def get_player_seasons(self, player_id: int) -> List[int]:
+        """
+        Get all season IDs where the player has appeared in matches.
+        """
+        stmt = (
+            select(func.distinct(col(Match.season_id)))
+            .join(Event, col(Event.match_id) == col(Match.id))
+            .where(col(Event.player_id) == player_id)
+            .order_by(col(Match.season_id).desc())
+        )
+        result = await self.session.exec(stmt)
+        return list(result.all())
+
     async def search_events(
         self,
         match_id: int,

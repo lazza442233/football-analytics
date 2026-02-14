@@ -90,7 +90,9 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
     if shot_mask.any():
         shots = events_df[shot_mask].copy()
         shots["xg"] = shots["attributes"].apply(
-            lambda x: x.get("xg", 0.0) if isinstance(x, dict) else 0.0
+            lambda x: (x.get("shot_statsbomb_xg") or x.get("xg") or 0.0)
+            if isinstance(x, dict)
+            else 0.0
         )
         xg_stats = (
             shots.groupby(["season_id", "player_id"])["xg"].sum().rename("xg_total")
@@ -103,9 +105,11 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
     pass_mask = events_df["type"] == "Pass"
     if pass_mask.any():
         passes = events_df[pass_mask].copy()
-        # If 'outcome' is missing, it's complete
+        # If 'pass_outcome' is missing, it's complete
         passes["is_complete"] = passes["attributes"].apply(
-            lambda x: 1 if (isinstance(x, dict) and x.get("outcome") is None) else 0
+            lambda x: 1
+            if (isinstance(x, dict) and x.get("pass_outcome") is None)
+            else 0
         )
         completed_stats = (
             passes.groupby(["season_id", "player_id"])["is_complete"]
@@ -165,6 +169,28 @@ def calculate_advanced_metrics(events_df: pd.DataFrame) -> pd.DataFrame:
         df_metrics["pass_completion_rate"] = 0.0
         df_metrics["progressive_passes"] = 0
         df_metrics["shot_assists"] = 0
+
+    # Tackles (from Duels)
+    # StatsBomb records tackles as a type of Duel
+    duel_mask = events_df["type"] == "Duel"
+    if duel_mask.any():
+        duels = events_df[duel_mask].copy()
+        duels["is_tackle"] = duels["attributes"].apply(
+            lambda x: 1
+            if (isinstance(x, dict) and x.get("duel_type") == "Tackle")
+            else 0
+        )
+        tackle_stats = (
+            duels.groupby(["season_id", "player_id"])["is_tackle"]
+            .sum()
+            .rename("tackles")
+        )
+
+        # Overwrite the empty 'tackles' column from initialization
+        if "tackles" in df_metrics.columns:
+            df_metrics = df_metrics.drop(columns=["tackles"])
+
+        df_metrics = df_metrics.join(tackle_stats, how="left").fillna({"tackles": 0})
 
     # Carries
     carry_mask = events_df["type"] == "Carry"

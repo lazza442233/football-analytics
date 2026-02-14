@@ -1,35 +1,29 @@
 import { Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
 import type { PlayerSearchResult } from '../api/client';
-import { searchPlayers } from '../api/client';
+import { usePlayerSearch } from '../api/hooks';
+
+interface PlayerSearchProps {
+  onPlayerSelect?: (player: PlayerSearchResult) => void;
+}
 
 /**
  * PlayerSearch Component
- * Phase 2 Deliverable: Connects to API
+ * Phase 2+ Refactor: Uses React Query via custom hook
  */
-export const PlayerSearch = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<PlayerSearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+export const PlayerSearch = ({ onPlayerSelect }: PlayerSearchProps) => {
+  const [inputValue, setInputValue] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const { data: results, isLoading, isError, isFetched } = usePlayerSearch(searchTerm);
 
-    setIsLoading(true);
-    setHasSearched(true);
-    try {
-      const data = await searchPlayers(searchQuery);
-      setResults(data);
-    } catch (error) {
-      console.error('Search failed:', error);
-      // Ideally show a toast or error message here
-    } finally {
-      setIsLoading(false);
+  const handleSearch = () => {
+    if (inputValue.trim()) {
+      setSearchTerm(inputValue.trim());
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
@@ -45,16 +39,16 @@ export const PlayerSearch = () => {
           <input
             id="player-search"
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="e.g., Harry Kane"
-            className="flex-1 px-4 py-2 bg-slate-800 text-slate-50 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            className="flex-1 px-4 py-2 bg-slate-800 text-slate-50 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
             disabled={isLoading}
           />
           <button
             onClick={handleSearch}
-            disabled={isLoading}
+            disabled={isLoading || !inputValue.trim()}
             className="px-6 py-2 bg-emerald-500 text-slate-900 font-medium rounded-lg hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {isLoading ? (
@@ -67,18 +61,27 @@ export const PlayerSearch = () => {
         </div>
 
         {/* Results Area */}
-        {hasSearched && (
-          <div className="mt-4">
-            {results.length > 0 ? (
+        {isFetched && (
+          <div className="mt-4 animate-in fade-in slide-in-from-top-4 duration-300">
+            {isError ? (
+              <div className="text-rose-400 text-center py-4">
+                Failed to search players. Please try again.
+              </div>
+            ) : results && results.length > 0 ? (
               <ul className="space-y-2">
                 {results.map((player) => (
                   <li
                     key={player.id}
-                    className="p-3 bg-slate-800 border border-slate-700 rounded-lg hover:border-emerald-500 cursor-pointer transition-colors flex justify-between items-center"
-                    onClick={() => console.log('Selected player:', player.id)}
+                    className="p-3 bg-slate-800 border border-slate-700 rounded-lg hover:border-emerald-500 cursor-pointer transition-colors flex justify-between items-center group"
+                    onClick={() => {
+                      onPlayerSelect?.(player);
+                      // Clear search after selection if desired, or keep it. Keeping it.
+                    }}
                   >
                     <div>
-                      <span className="text-slate-50 font-medium">{player.name}</span>
+                      <span className="text-slate-50 font-medium group-hover:text-emerald-400 transition-colors">
+                        {player.name}
+                      </span>
                       <span className="ml-2 text-slate-400 text-sm">({player.position})</span>
                     </div>
                     <span className="text-xs text-slate-500">ID: {player.id}</span>
@@ -87,7 +90,7 @@ export const PlayerSearch = () => {
               </ul>
             ) : (
               <div className="text-slate-400 text-center py-4">
-                No players found matching "{searchQuery}"
+                No players found matching "{searchTerm}"
               </div>
             )}
           </div>
