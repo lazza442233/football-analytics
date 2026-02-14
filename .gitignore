@@ -15,3 +15,7 @@ htmlcov/
 .idea/
 .DS_Store
 experiments/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
