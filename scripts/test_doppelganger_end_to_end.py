@@ -114,7 +114,7 @@ async def run_end_to_end_test():
             if not unique_player_ids:
                 continue
 
-            q = select(Player).where(Player.id.in_(unique_player_ids))
+            q = select(Player).where(Player.id.in_(unique_player_ids))  # type: ignore
             player_results = await session.exec(q)
             players = player_results.all()
 

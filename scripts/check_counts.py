@@ -17,12 +17,15 @@ async def check_counts():
     )
 
     async with async_session_factory() as session:
+        # type: ignore
         match_result = await session.exec(select(func.count(Match.id)))
         match_count = match_result.one()
 
+        # type: ignore
         event_result = await session.exec(select(func.count(Event.id)))
         event_count = event_result.one()
 
+        # type: ignore
         player_result = await session.exec(select(func.count(Player.id)))
         player_count = player_result.one()
 

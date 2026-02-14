@@ -165,7 +165,7 @@ class DoppelgangerService:
 
         # 7. Get the fitted vectors from the knn model for generating explanations
         # The NearestNeighbors model stores the fitted data in _fit_X
-        fitted_vectors = bundle.knn._fit_X
+        fitted_vectors = bundle.knn._fit_X  # type: ignore
 
         # 8. Filter out the target player if they appear in results
         # and apply similarity threshold
@@ -204,7 +204,8 @@ class DoppelgangerService:
                     season_id=entity.season_id,
                     similarity_score=round(similarity_score, 3),
                     explanation=schemas.SimilarPlayerExplanation(
-                        shared_strengths=explanation_dict["shared_strengths"],  # type: ignore
+                        # type: ignore
+                        shared_strengths=explanation_dict["shared_strengths"],
                         key_difference=explanation_dict.get("key_difference"),  # type: ignore
                     ),
                 )

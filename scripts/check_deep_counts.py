@@ -18,13 +18,14 @@ async def check_deep_counts():
 
     async with async_session_factory() as session:
         # Check distinct matches in Events
+        # type: ignore
         result = await session.exec(select(func.count(distinct(Event.match_id))))
         events_match_count = result.one()
         print(f"Number of matches with events: {events_match_count}")
 
         # Check average events per match
         result = await session.exec(
-            select(Event.match_id, func.count(Event.id)).group_by(Event.match_id)
+            select(Event.match_id, func.count(Event.id)).group_by(Event.match_id)  # type: ignore
         )
         counts = result.all()
         if counts:
