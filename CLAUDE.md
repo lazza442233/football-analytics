@@ -165,11 +165,25 @@ Any metric that should be normalized per 90 minutes must be added to `NORMALIZE_
 
 ## Documentation References
 
-- **Setup Guide**: `docs/setup_guide.md`
-- **Data Ingestion**: `docs/data_ingestion.md`
-- **Project Structure**: `docs/project_structure.md`
-- **Doppelgänger Spec**: `docs/arch_doppelganger.md`
-- **Project Audit**: `docs/audit_feb_2026.md`
+### Getting Started (Learning-Oriented)
+- **Quick Start**: `docs/quickstart.md` - 10-minute tutorial to get running
+- **Setup Guide**: `docs/setup_guide.md` - Comprehensive installation and development setup
+- **Data Ingestion**: `docs/data_ingestion.md` - How to load StatsBomb data
+- **Troubleshooting**: `docs/troubleshooting.md` - Common issues and solutions
+
+### Understanding the System (Explanation-Oriented)
+- **Doppelgänger Spec**: `docs/dev/arch_doppelganger.md` - How the similarity engine works
+- **Frontend Architecture**: `docs/dev/arch_frontend_dashboard.md` - UI/UX design
+- **Project Structure**: `docs/project_structure.md` - Codebase organization
+
+### Reference (Information-Oriented)
+- **README**: `README.md` - Project overview with architecture diagrams
+- **Contributing**: `CONTRIBUTING.md` - Contribution guidelines and code standards
+- **API Docs**: http://localhost:8000/docs (when running) - Interactive OpenAPI spec
+
+### Audits & History
+- **Recent Audit**: `docs/audits/audit_feb_14_2026.md`
+- **Previous Audit**: `docs/audits/audit_feb_2_2026.md`
 
 ## Code Quality Standards
 
