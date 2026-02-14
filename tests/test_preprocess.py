@@ -81,4 +81,4 @@ def test_fit_scaler():
 
     # Test transform logic works
     transformed = scaler.transform(df[features.FEATURES_BETA])
-    assert transformed.shape == (10, 11)  # 11 features
+    assert transformed.shape == (10, len(features.FEATURES_BETA))
