@@ -18,6 +18,15 @@ class PlayerSeasonNotFoundError(DoppelgangerError):
         super().__init__(f"Player {player_id} not found for season {season_id}")
 
 
+class InvalidPositionError(DoppelgangerError):
+    """Raised when the target player's position is unknown or invalid."""
+
+    def __init__(self, player_id: int, position: str):
+        self.player_id = player_id
+        self.position = position
+        super().__init__(f"Player {player_id} has invalid position: '{position}'")
+
+
 class InsufficientDataError(DoppelgangerError):
     """Raised when the player has not played enough minutes to be analyzed."""
 

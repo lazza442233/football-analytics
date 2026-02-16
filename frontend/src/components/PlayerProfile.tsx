@@ -11,25 +11,30 @@ import {
 } from 'recharts';
 import type { PlayerSeasonStats } from '../api/client';
 import { usePlayerSeasons, usePlayerStats } from '../api/hooks';
+import { SimilarPlayers } from './SimilarPlayers';
 import { StatCard } from './StatCard';
 
 interface PlayerProfileProps {
   playerId: number;
   playerName: string;
   seasonId?: number;
+  onPlayerSelect?: (playerId: number) => void;
 }
 
 /**
  * PlayerProfile Component
  * Phase 2 Deliverable: The "DNA" View
+ * Phase 3 Update: Now includes Similar Players section
  * - Fetches player season stats
  * - Displays StatCards for key metrics
  * - Renders a Radar Chart showing player's playstyle profile
+ * - Shows similar players from Doppelgänger Engine
  */
 export const PlayerProfile = ({
   playerId,
   playerName,
   seasonId: propSeasonId,
+  onPlayerSelect,
 }: PlayerProfileProps) => {
   // 1. Fetch available seasons
   const { data: seasons, isLoading: isLoadingSeasons } = usePlayerSeasons(playerId);
@@ -274,6 +279,16 @@ export const PlayerProfile = ({
           icon to learn what each metric represents.
         </p>
       </div>
+
+      {/* Similar Players - Phase 3 */}
+      {seasonId && (
+        <SimilarPlayers
+          playerId={playerId}
+          seasonId={seasonId}
+          onPlayerSelect={onPlayerSelect}
+          positionGroup={stats?.advanced_metrics?.position_group}
+        />
+      )}
     </div>
   );
 };

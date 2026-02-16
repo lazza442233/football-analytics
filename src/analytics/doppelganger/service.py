@@ -7,10 +7,12 @@ from src.analytics.doppelganger import etl, explain, preprocess, repo, schemas
 from src.analytics.doppelganger.config import MIN_MINUTES, SIMILARITY_FLOOR
 from src.analytics.doppelganger.errors import (
     InsufficientDataError,
+    InvalidPositionError,
     NoMatchesError,
     PlayerSeasonNotFoundError,
 )
 from src.analytics.doppelganger.registry import registry
+from src.analytics.doppelganger.types import PositionGroup
 
 
 class DoppelgangerService:
@@ -54,10 +56,48 @@ class DoppelgangerService:
         stats_df["position_group"] = (
             stats_df["player_id"].map(position_map).fillna("UNKNOWN")
         )
+        stats_df["name"] = (
+            stats_df["player_id"].map(player_meta_df["name"]).fillna("Unknown")
+        )
 
         stats_df = stats_df.set_index(["season_id", "player_id"])
 
         return stats_df
+
+    async def train_season_models(self, season_id: int) -> Dict[str, int]:
+        """
+        Builds the dataset for a season and trains models for all position groups.
+        Populates the global in-memory registry.
+        """
+        from src.analytics.doppelganger import train
+
+        # 1. Build Dataset
+        df_season = await self.build_season_dataset(season_id)
+
+        if df_season.empty:
+            return {}
+
+        results = {}
+
+        # 2. Split by Position Group
+        # Iterate over known groups to ensure we cover all of them
+        for group in PositionGroup:
+            group_val = group.value
+
+            # Filter for this group
+            df_group = df_season[df_season["position_group"] == group_val]
+
+            if df_group.empty:
+                continue
+
+            # 3. Train
+            bundle = train.train_model_for_group(df_group, group_val)
+
+            # 4. Register
+            registry.register(group_val, bundle)
+            results[group_val] = bundle.vector_count
+
+        return results
 
     async def get_player_stats(
         self, player_id: int, season_id: int
@@ -80,6 +120,7 @@ class DoppelgangerService:
             return None
 
         # Enrich
+        player_meta_df = player_meta_df.set_index("id")
         position_map = etl.assign_position_group(player_meta_df)
         stats_df = stats_df.reset_index()
         stats_df["position_group"] = (
@@ -115,6 +156,12 @@ class DoppelgangerService:
         position_group = query.position_group or player_stats.get(
             "position_group", "UNKNOWN"
         )
+
+        # Validate Position
+        valid_positions = {p.value for p in PositionGroup}
+        if position_group not in valid_positions:
+            raise InvalidPositionError(query.player_id, str(position_group))
+
         minutes_played = player_stats.get("minutes_played", 0.0)
 
         if minutes_played < MIN_MINUTES:

@@ -8,9 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from sqlalchemy import text
 
+from src.analytics.doppelganger.service import DoppelgangerService
 from src.api.routers import analytics, doppelganger, ingest, matches, players
 from src.config import settings
-from src.database import engine
+from src.database import engine, get_session
 from src.logging_conf import configure_logging
 
 # Configure logging before creating the app
@@ -37,6 +38,26 @@ async def lifespan(app: FastAPI):
         logger.info("Connected to Redis/ARQ")
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
+
+    # Dev Helper: Auto-train Doppelgänger models for commonly used seasons
+    # if in development. This prevents the "vector_count: 0" issue on reload
+    try:
+        seasons_to_train = [282, 106]  # 282: EPL 03/04, 106: World Cup 2022
+        async for session in get_session():
+            svc = DoppelgangerService(session)
+            for season_id in seasons_to_train:
+                logger.info(
+                    f"Auto-training Doppelgänger models for Season {season_id}..."
+                )
+                try:
+                    counts = await svc.train_season_models(season_id)
+                    logger.info(f"Season {season_id} Training Complete: {counts}")
+                except Exception as ex:
+                    # Don't crash startup if one season fails (e.g. data missing)
+                    logger.warning(f"Could not train season {season_id}: {ex}")
+            break
+    except Exception as e:
+        logger.warning(f"Auto-training loop failed: {e}")
 
     yield
 

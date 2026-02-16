@@ -10,6 +10,7 @@ from src.analytics.doppelganger.config import DEFAULT_LIMIT, MAX_LIMIT
 from src.analytics.doppelganger.errors import (
     DoppelgangerError,
     InsufficientDataError,
+    InvalidPositionError,
     NoMatchesError,
     PlayerSeasonNotFoundError,
 )
@@ -18,6 +19,25 @@ from src.analytics.doppelganger.types import PositionGroup
 from src.database import get_session
 
 router = APIRouter(prefix="/analytics", tags=["Doppelgänger"])
+
+
+@router.post("/train", status_code=202)
+async def train_models(
+    season_id: int = Query(..., description="The season ID to train models on"),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Triggers the training of Doppelgänger models for a specific season.
+    This populates the in-memory vector database.
+    """
+    service = DoppelgangerService(session)
+    counts = await service.train_season_models(season_id)
+
+    return {
+        "message": "Training complete",
+        "season_id": season_id,
+        "vector_counts": counts,
+    }
 
 
 @router.get("/doppelganger", response_model=schemas.DoppelgangerResponse)
@@ -102,6 +122,13 @@ async def search_similar_players(
             status_code=404,
             detail=f"Player {e.player_id} not found for season {e.season_id}. "
             "Ensure the player has event data ingested for this season.",
+        )
+
+    except InvalidPositionError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Player {e.player_id} has invalid position group '{e.position}'. "
+            "Analysis requires one of: GK, DEF, MID, FWD.",
         )
 
     except InsufficientDataError as e:

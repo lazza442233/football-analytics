@@ -94,3 +94,58 @@ export const getPlayerSeasons = async (playerId: number): Promise<number[]> => {
   const response = await apiClient.get<number[]>(`/players/${playerId}/seasons`);
   return response.data;
 };
+
+/**
+ * Doppelgänger Engine Types (Player Similarity Search)
+ */
+export interface SimilarPlayerExplanation {
+  shared_strengths: string[];
+  key_difference?: string;
+}
+
+export interface SimilarPlayerResult {
+  player_id: number;
+  name: string;
+  season_id: number;
+  similarity_score: number;
+  explanation: SimilarPlayerExplanation;
+}
+
+export interface DoppelgangerMeta {
+  model_version: string;
+  position_group: string;
+  vector_count: number;
+}
+
+export interface TargetPlayer {
+  name: string;
+  season_id: number;
+  position: string;
+}
+
+export interface DoppelgangerResponse {
+  meta: DoppelgangerMeta;
+  target: TargetPlayer;
+  similar_players: SimilarPlayerResult[];
+}
+
+/**
+ * Fetch similar players using the Doppelgänger Engine
+ * Endpoint: GET /analytics/doppelganger
+ */
+export const getSimilarPlayers = async (
+  playerId: number,
+  seasonId: number,
+  limit: number = 10,
+  positionGroup?: string
+): Promise<DoppelgangerResponse> => {
+  const response = await apiClient.get<DoppelgangerResponse>('/analytics/doppelganger', {
+    params: {
+      player_id: playerId,
+      season_id: seasonId,
+      limit,
+      position_group: positionGroup,
+    },
+  });
+  return response.data;
+};

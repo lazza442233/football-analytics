@@ -19,3 +19,7 @@ experiments/
 # Frontend
 frontend/node_modules/
 frontend/dist/
+
+.claude
+_bmad
+_bmad-output
