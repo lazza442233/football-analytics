@@ -3,7 +3,7 @@
 
 import asyncio
 
-from sqlmodel import func, select
+from sqlmodel import col, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database import engine
@@ -20,11 +20,11 @@ async def audit():
         print("\n=== MATCHES BY SEASON ===")
         result = await session.exec(
             select(
-                Match.competition_id,
-                Match.season_id,
-                func.count(Match.id).label("total"),
-                func.count(Match.events_ingested_at).label("with_events"),
-            ).group_by(Match.competition_id, Match.season_id)
+                col(Match.competition_id),
+                col(Match.season_id),
+                func.count(col(Match.id)).label("total"),
+                func.count(col(Match.events_ingested_at)).label("with_events"),
+            ).group_by(col(Match.competition_id), col(Match.season_id))
         )
         for row in result:
             print(
@@ -32,17 +32,17 @@ async def audit():
                 f"{row[3]}/{row[2]} matches with events"
             )
 
-        event_count = (await session.exec(select(func.count(Event.id)))).one()
+        event_count = (await session.exec(select(func.count(col(Event.id))))).one()
         print(f"\n=== TOTAL EVENTS: {event_count:,} ===")
 
-        player_count = (await session.exec(select(func.count(Player.id)))).one()
+        player_count = (await session.exec(select(func.count(col(Player.id))))).one()
         print(f"=== TOTAL PLAYERS: {player_count:,} ===")
 
         print("\n=== TOP EVENT TYPES ===")
         result = await session.exec(
-            select(Event.type, func.count(Event.id))
+            select(Event.type, func.count(col(Event.id)))
             .group_by(Event.type)
-            .order_by(func.count(Event.id).desc())
+            .order_by(func.count(col(Event.id)).desc())
             .limit(10)
         )
         for etype, count in result:
