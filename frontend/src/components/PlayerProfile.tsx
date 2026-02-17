@@ -1,4 +1,4 @@
-import { Clock, Info, Loader2 } from 'lucide-react';
+import { ChevronDown, Clock, Info, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import {
   PolarAngleAxis,
@@ -9,8 +9,8 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import type { PlayerSeasonStats } from '../api/client';
-import { usePlayerSeasons, usePlayerStats } from '../api/hooks';
+import type { PlayerSeasonStats, SeasonInfo } from '../api/client';
+import { usePlayerSeasonsDetailed, usePlayerStats } from '../api/hooks';
 import { SimilarPlayers } from './SimilarPlayers';
 import { StatCard } from './StatCard';
 
@@ -18,6 +18,7 @@ interface PlayerProfileProps {
   playerId: number;
   playerName: string;
   seasonId?: number;
+  onSeasonChange?: (seasonId: number) => void;
   onPlayerSelect?: (playerId: number) => void;
 }
 
@@ -34,21 +35,34 @@ export const PlayerProfile = ({
   playerId,
   playerName,
   seasonId: propSeasonId,
+  onSeasonChange,
   onPlayerSelect,
 }: PlayerProfileProps) => {
-  // 1. Fetch available seasons
-  const { data: seasons, isLoading: isLoadingSeasons } = usePlayerSeasons(playerId);
+  // 1. Fetch available seasons with detailed info
+  const { data: seasons, isLoading: isLoadingSeasons } = usePlayerSeasonsDetailed(playerId);
 
   // 2. Determine active season (Prop > Latest Available)
-  const seasonId = propSeasonId ?? seasons?.[0];
+  const seasonId = propSeasonId ?? seasons?.[0]?.season_id;
+
+  // Find the current season info for display
+  const currentSeason = seasons?.find((s) => s.season_id === seasonId);
 
   // 3. Fetch stats for that season
   const { data: stats, isLoading: isLoadingStats, error } = usePlayerStats(playerId, seasonId ?? 0);
 
-  // 4. State for info tooltip
+  // 4. State for info tooltip and season dropdown
   const [showMetricsInfo, setShowMetricsInfo] = useState(false);
+  const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
 
   const isLoading = isLoadingSeasons || (!!seasonId && isLoadingStats);
+
+  // Handle season selection
+  const handleSeasonSelect = (season: SeasonInfo) => {
+    setShowSeasonDropdown(false);
+    if (onSeasonChange) {
+      onSeasonChange(season.season_id);
+    }
+  };
 
   /**
    * Metric Definitions for DNA Profile
@@ -161,9 +175,49 @@ export const PlayerProfile = ({
       <div className="border-b border-slate-700 pb-4 flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-bold text-slate-50">{playerName}</h2>
-          <p className="text-emerald-400 text-sm mt-1 font-mono">
-            ID: {playerId} • Season {seasonId}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-slate-400 text-sm font-mono">ID: {playerId}</span>
+            <span className="text-slate-600">•</span>
+
+            {/* Season Selector - only show dropdown if multiple seasons */}
+            {seasons && seasons.length > 1 ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowSeasonDropdown(!showSeasonDropdown)}
+                  className="flex items-center gap-1 px-2 py-1 bg-slate-700 hover:bg-slate-600
+                             rounded text-emerald-400 text-sm transition-colors"
+                >
+                  {currentSeason?.display_name ?? `Season ${seasonId}`}
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${showSeasonDropdown ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {showSeasonDropdown && (
+                  <div
+                    className="absolute top-full left-0 mt-1 z-50 min-w-[200px]
+                               bg-slate-800 border border-slate-600 rounded-lg shadow-xl"
+                  >
+                    {seasons.map((season) => (
+                      <button
+                        key={season.season_id}
+                        onClick={() => handleSeasonSelect(season)}
+                        className={`w-full text-left px-3 py-2 text-sm transition-colors
+                                    hover:bg-slate-700 first:rounded-t-lg last:rounded-b-lg
+                                    ${season.season_id === seasonId ? 'text-emerald-400 bg-slate-700/50' : 'text-slate-300'}`}
+                      >
+                        {season.display_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className="text-emerald-400 text-sm">
+                {currentSeason?.display_name ?? `Season ${seasonId}`}
+              </span>
+            )}
+          </div>
         </div>
         <div className="text-right">
           <span className="text-slate-400 text-sm">Matches Played</span>

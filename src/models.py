@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -24,6 +24,7 @@ class Match(SQLModel, table=True):
     away_team: str
     home_score: int
     away_score: int
+    events_ingested_at: Optional[datetime] = Field(default=None)
 
     competition: Optional[Competition] = Relationship(back_populates="matches")
     events: List["Event"] = Relationship(back_populates="match")

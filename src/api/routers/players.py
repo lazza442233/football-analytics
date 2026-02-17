@@ -3,12 +3,12 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.analytics.doppelganger.service import DoppelgangerService
 from src.database import get_session
-from src.models import Player
+from src.models import Competition, Event, Match, Player
 from src.services.analytics import AnalyticsService
 
 router = APIRouter(prefix="/players", tags=["Players"])
@@ -24,6 +24,16 @@ class PlayerSeasonStats(BaseModel):
     total_xg: float
     # New Field: The normalized per-90 metrics (DNA)
     advanced_metrics: Dict[str, Any] = {}
+
+
+class SeasonInfo(BaseModel):
+    """Detailed information about a season for display purposes."""
+
+    season_id: int
+    competition_id: int
+    competition_name: str
+    display_name: str  # e.g., "UEFA Euro 24 (282)"
+    year: int  # Derived from match dates
 
 
 @router.get("/search", response_model=List[Player])
@@ -81,3 +91,52 @@ async def get_player_season_stats(
 
     # Merge the results
     return PlayerSeasonStats(**count_stats, advanced_metrics=dna_stats)
+
+
+@router.get("/{player_id}/seasons-detailed", response_model=List[SeasonInfo])
+async def get_player_seasons_detailed(
+    player_id: int, session: AsyncSession = Depends(get_session)
+):
+    """
+    Get detailed season info for a player, including competition names.
+    Returns seasons sorted by most recent first.
+    """
+    # Query distinct seasons with competition info and year from match dates
+    stmt: Any = (
+        select(
+            col(Match.season_id),
+            col(Match.competition_id),
+            col(Competition.name).label("competition_name"),
+            func.extract("year", func.max(Match.match_date)).label("year"),
+        )
+        .join(Event, col(Event.match_id) == col(Match.id))
+        .join(Competition, col(Competition.id) == col(Match.competition_id))
+        .where(col(Event.player_id) == player_id)
+        .group_by(
+            col(Match.season_id), col(Match.competition_id), col(Competition.name)
+        )
+        .order_by(func.extract("year", func.max(Match.match_date)).desc())
+    )
+    result = await session.exec(stmt)
+    rows = result.all()
+
+    seasons = []
+    for row in rows:
+        # Access tuple elements by index
+        season_id = row[0]
+        competition_id = row[1]
+        competition_name = row[2]
+        year = int(row[3])
+        year_short = str(year)[-2:]  # e.g., 2024 -> "24"
+        display_name = f"{competition_name} {year_short} ({season_id})"
+        seasons.append(
+            SeasonInfo(
+                season_id=season_id,
+                competition_id=competition_id,
+                competition_name=competition_name,
+                display_name=display_name,
+                year=year,
+            )
+        )
+
+    return seasons

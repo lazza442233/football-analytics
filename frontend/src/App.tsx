@@ -5,6 +5,15 @@ import { PlayerSearch } from './components/PlayerSearch';
 
 function App() {
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerSearchResult | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<number | undefined>(undefined);
+
+  /**
+   * Handle selecting a new player - reset season to default
+   */
+  const handlePlayerSelect = (player: PlayerSearchResult | null) => {
+    setSelectedPlayer(player);
+    setSelectedSeason(undefined); // Reset to default (most recent) season
+  };
 
   /**
    * Handle navigation to a similar player's profile
@@ -18,6 +27,7 @@ function App() {
       name: `Player ${playerId}`, // Placeholder - actual name loads from API
       position: 'Unknown', // Will be determined by the profile
     });
+    setSelectedSeason(undefined); // Reset to default season
 
     // Scroll to top to show the new profile
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -27,9 +37,7 @@ function App() {
     <div className="min-h-screen bg-slate-900 p-8">
       <div className="w-full max-w-6xl mx-auto">
         <header className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-50 mb-2">
-            Scout's Eye
-          </h1>
+          <h1 className="text-4xl font-bold text-slate-50 mb-2">Scout's Eye</h1>
           <p className="text-slate-400">
             Football Analytics Dashboard - Phase 3: The Similarity Engine
           </p>
@@ -37,7 +45,7 @@ function App() {
 
         {/* Search Interface */}
         <div className="bg-slate-800 rounded-xl p-8 shadow-xl mb-8">
-          <PlayerSearch onPlayerSelect={setSelectedPlayer} />
+          <PlayerSearch onPlayerSelect={handlePlayerSelect} />
         </div>
 
         {/* Player Profile - Shows when a player is selected */}
@@ -46,6 +54,8 @@ function App() {
             <PlayerProfile
               playerId={selectedPlayer.id}
               playerName={selectedPlayer.name}
+              seasonId={selectedSeason}
+              onSeasonChange={setSelectedSeason}
               onPlayerSelect={handleSimilarPlayerSelect}
             />
           </div>

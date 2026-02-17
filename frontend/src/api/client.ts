@@ -96,6 +96,25 @@ export const getPlayerSeasons = async (playerId: number): Promise<number[]> => {
 };
 
 /**
+ * Detailed season information for display
+ */
+export interface SeasonInfo {
+  season_id: number;
+  competition_id: number;
+  competition_name: string;
+  display_name: string; // e.g., "UEFA Euro 24 (282)"
+  year: number;
+}
+
+/**
+ * Fetch detailed season info for a player (with competition names)
+ */
+export const getPlayerSeasonsDetailed = async (playerId: number): Promise<SeasonInfo[]> => {
+  const response = await apiClient.get<SeasonInfo[]>(`/players/${playerId}/seasons-detailed`);
+  return response.data;
+};
+
+/**
  * Doppelgänger Engine Types (Player Similarity Search)
  */
 export interface SimilarPlayerExplanation {

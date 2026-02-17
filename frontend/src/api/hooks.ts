@@ -1,5 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { getPlayerSeasons, getPlayerStats, getSimilarPlayers, searchPlayers } from './client';
+import {
+  getPlayerSeasons,
+  getPlayerSeasonsDetailed,
+  getPlayerStats,
+  getSimilarPlayers,
+  searchPlayers,
+} from './client';
 
 export const usePlayerSearch = (query: string) => {
   return useQuery({
@@ -24,6 +30,15 @@ export const usePlayerSeasons = (playerId: number) => {
   return useQuery({
     queryKey: ['player', playerId, 'seasons'],
     queryFn: () => getPlayerSeasons(playerId),
+    enabled: !!playerId,
+    staleTime: 1000 * 60 * 60 * 24, // Seasons list changes rarely
+  });
+};
+
+export const usePlayerSeasonsDetailed = (playerId: number) => {
+  return useQuery({
+    queryKey: ['player', playerId, 'seasons-detailed'],
+    queryFn: () => getPlayerSeasonsDetailed(playerId),
     enabled: !!playerId,
     staleTime: 1000 * 60 * 60 * 24, // Seasons list changes rarely
   });

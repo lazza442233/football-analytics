@@ -2,10 +2,13 @@ import asyncio
 import logging
 import math
 import uuid
+from asyncio import Semaphore, gather
+from datetime import datetime
 from typing import Any, Dict, List
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlmodel import col, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 from statsbombpy import sb
 
@@ -16,6 +19,18 @@ logger = logging.getLogger(__name__)
 
 # Suppress pandas chained assignment warnings
 pd.options.mode.chained_assignment = None
+
+# Global lock to serialize StatsBomb API calls
+# (prevents segfault with concurrent requests)
+_statsbomb_api_lock: asyncio.Lock | None = None
+
+
+def _get_api_lock() -> asyncio.Lock:
+    """Get or create the global API lock (must be called within event loop)."""
+    global _statsbomb_api_lock
+    if _statsbomb_api_lock is None:
+        _statsbomb_api_lock = asyncio.Lock()
+    return _statsbomb_api_lock
 
 
 class StatsBombIngestionService:
@@ -59,14 +74,30 @@ class StatsBombIngestionService:
         )
 
     async def ingest_season_matches(
-        self, competition_id: int, season_id: int, ingest_events: bool = False
+        self,
+        competition_id: int,
+        season_id: int,
+        ingest_events: bool = False,
+        max_concurrency: int = 10,
+        skip_completed: bool = True,
     ) -> bool:
         """
         Fetch and upsert all matches for a given competition and season.
         Uses asyncio.to_thread for non-blocking I/O.
+
+        Args:
+            competition_id: StatsBomb competition ID
+            season_id: StatsBomb season ID
+            ingest_events: If True, also ingest all events for each match
+            max_concurrency: Number of matches to process in parallel (default: 10)
+            skip_completed: If True, skip matches already ingested (default: True)
+
+        Returns:
+            True if successful, False if competition not found
         """
         logger.info(
-            f"Starting match ingestion for Comp={competition_id}, Season={season_id}"
+            f"Starting match ingestion for Comp={competition_id}, Season={season_id} "
+            f"(concurrency={max_concurrency}, skip_completed={skip_completed})"
         )
 
         self.competition_id = competition_id
@@ -84,10 +115,11 @@ class StatsBombIngestionService:
 
         # 2. Fetch & Upsert Matches
         try:
-            # Run blocking call in thread
-            matches_data = await asyncio.to_thread(
-                sb.matches, competition_id=competition_id, season_id=season_id
-            )
+            # Run blocking call in thread (with lock for thread-safety)
+            async with _get_api_lock():
+                matches_data = await asyncio.to_thread(
+                    sb.matches, competition_id=competition_id, season_id=season_id
+                )
 
             if isinstance(matches_data, pd.DataFrame):
                 matches_df = matches_data
@@ -106,16 +138,62 @@ class StatsBombIngestionService:
             logger.info("Matches upserted successfully.")
 
             if ingest_events:
-                logger.info("Starting event ingestion for all matches...")
-                for _, row in matches_df.iterrows():
-                    match_id = int(row["match_id"])
-                    try:
-                        # Check existence later; trusting process for now.
-                        await self.ingest_events(match_id)
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to ingest events for match {match_id}: {e}"
+                # Determine which matches need event ingestion
+                if skip_completed:
+                    async with AsyncSession(engine) as session:
+                        result = await session.exec(
+                            select(Match.id)
+                            .where(Match.competition_id == competition_id)
+                            .where(Match.season_id == season_id)
+                            .where(col(Match.events_ingested_at).is_(None))
                         )
+                        pending_match_ids = list(result.all())
+
+                        skipped = len(matches_df) - len(pending_match_ids)
+                        logger.info(
+                            f"Found {len(pending_match_ids)} pending matches "
+                            f"(skipping {skipped} completed)"
+                        )
+                else:
+                    # Process all matches
+                    pending_match_ids = [
+                        int(row["match_id"]) for _, row in matches_df.iterrows()
+                    ]
+                    logger.info(
+                        f"Processing all {len(pending_match_ids)} matches "
+                        f"(skip_completed=False)"
+                    )
+
+                if not pending_match_ids:
+                    logger.info("No matches to ingest - all already completed!")
+                    return True
+
+                # Parallel event ingestion with bounded concurrency
+                logger.info(
+                    f"Starting parallel event ingestion "
+                    f"(concurrency={max_concurrency})..."
+                )
+                semaphore = Semaphore(max_concurrency)
+
+                async def bounded_ingest(match_id: int):
+                    """Process one match with bounded concurrency."""
+                    async with semaphore:
+                        try:
+                            logger.info(f"Ingesting events for match {match_id}...")
+                            await self.ingest_events(match_id)
+                            logger.info(f"✓ Completed match {match_id}")
+                        except Exception as e:
+                            logger.error(
+                                f"✗ Failed to ingest events for match {match_id}: {e}"
+                            )
+                            # Don't re-raise - allow other matches to continue
+
+                # Execute all ingestions in parallel with bounded concurrency
+                await gather(*[bounded_ingest(mid) for mid in pending_match_ids])
+
+                logger.info(
+                    f"Completed event ingestion for {len(pending_match_ids)} matches"
+                )
 
             return True
 
@@ -150,8 +228,9 @@ class StatsBombIngestionService:
             if comp_id is None or seas_id is None:
                 raise ValueError("Competition ID and Season ID must be set.")
 
-            # Non-blocking fetch
-            comps = await asyncio.to_thread(sb.competitions)
+            # Non-blocking fetch (with lock for thread-safety)
+            async with _get_api_lock():
+                comps = await asyncio.to_thread(sb.competitions)
 
             # Cast to DataFrame for type safety if needed, though usually it is one
             if not isinstance(comps, pd.DataFrame):
@@ -191,9 +270,10 @@ class StatsBombIngestionService:
             if comp_id is None or seas_id is None:
                 raise ValueError("Competition ID and Season ID must be set.")
 
-            matches: Any = await asyncio.to_thread(
-                sb.matches, competition_id=comp_id, season_id=seas_id
-            )
+            async with _get_api_lock():
+                matches: Any = await asyncio.to_thread(
+                    sb.matches, competition_id=comp_id, season_id=seas_id
+                )
 
             if not isinstance(matches, pd.DataFrame):
                 # statsbombpy can return dicts if credentials fail or other reasons,
@@ -236,7 +316,9 @@ class StatsBombIngestionService:
     async def ingest_events(self, match_id: int):
         logger.info(f"Fetching events for match {match_id}...")
         try:
-            events: Any = await asyncio.to_thread(sb.events, match_id=match_id)
+            # Use lock to serialize StatsBomb API calls (prevents segfault)
+            async with _get_api_lock():
+                events: Any = await asyncio.to_thread(sb.events, match_id=match_id)
 
             if not isinstance(events, pd.DataFrame):
                 events = pd.DataFrame(events)
@@ -315,10 +397,21 @@ class StatsBombIngestionService:
             )
 
             async with AsyncSession(engine) as session:
-                # Save Players
-                for p in player_objects.values():
-                    await session.merge(p)
-                await session.commit()
+                # Save Players using bulk upsert (same pattern as events)
+                # Sort by ID to ensure consistent lock ordering and prevent deadlocks
+                if player_objects:
+                    players_data = [p.model_dump() for p in player_objects.values()]
+                    players_data.sort(key=lambda p: p["id"])
+                    stmt = pg_insert(Player).values(players_data)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["id"],
+                        set_={
+                            "name": stmt.excluded.name,
+                            "position": stmt.excluded.position,
+                        },
+                    )
+                    await session.exec(stmt)
+                    await session.commit()
 
                 # Save Events using Upsert (ON CONFLICT DO UPDATE) for Idempotency
                 if event_objects:
@@ -336,6 +429,17 @@ class StatsBombIngestionService:
                         await session.exec(stmt)
 
                     await session.commit()
+
+            # Mark match as ingested (after successful completion)
+            async with AsyncSession(engine) as session:
+                await session.exec(
+                    update(Match)
+                    .where(col(Match.id) == match_id)
+                    .values(events_ingested_at=datetime.utcnow())
+                )
+                await session.commit()
+
+            logger.info(f"Marked match {match_id} as ingested")
 
         except Exception as e:
             logger.error(f"Error ingesting events: {e}")

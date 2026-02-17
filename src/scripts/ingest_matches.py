@@ -27,6 +27,17 @@ def main():
         action="store_true",
         help="If set, also ingest all events for these matches.",
     )
+    parser.add_argument(
+        "--parallel",
+        type=int,
+        default=10,
+        help="Number of matches to process in parallel (default: 10)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-ingest already completed matches (default: skip completed)",
+    )
 
     args = parser.parse_args()
 
@@ -36,6 +47,8 @@ def main():
             competition_id=args.comp_id,
             season_id=args.season_id,
             ingest_events=args.events,
+            max_concurrency=args.parallel,
+            skip_completed=not args.force,
         )
     )
 
