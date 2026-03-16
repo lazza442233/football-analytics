@@ -29,6 +29,8 @@ POSITION_MAPPINGS: Dict[str, str] = {
     "Right Back": "DEF",
     "Left Back": "DEF",
     "Center Back": "DEF",
+    "Right Center Back": "DEF",
+    "Left Center Back": "DEF",
     "Right Wing Back": "DEF",
     "Left Wing Back": "DEF",
     # Midfielders
@@ -38,6 +40,8 @@ POSITION_MAPPINGS: Dict[str, str] = {
     "Center Midfield": "MID",
     "Right Midfield": "MID",
     "Left Midfield": "MID",
+    "Right Center Midfield": "MID",
+    "Left Center Midfield": "MID",
     "Center Attacking Midfield": "MID",
     "Right Attacking Midfield": "MID",
     "Left Attacking Midfield": "MID",

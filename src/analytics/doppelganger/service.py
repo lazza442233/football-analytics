@@ -68,6 +68,7 @@ class DoppelgangerService:
         """
         Builds the dataset for a season and trains models for all position groups.
         Populates the global in-memory registry.
+        DEPRECATED: Use train_global_models() for cross-season comparisons.
         """
         from src.analytics.doppelganger import train
 
@@ -86,6 +87,77 @@ class DoppelgangerService:
 
             # Filter for this group
             df_group = df_season[df_season["position_group"] == group_val]
+
+            if df_group.empty:
+                continue
+
+            # 3. Train
+            bundle = train.train_model_for_group(df_group, group_val)
+
+            # 4. Register
+            registry.register(group_val, bundle)
+            results[group_val] = bundle.vector_count
+
+        return results
+
+    async def build_global_dataset(self) -> pd.DataFrame:
+        """
+        Builds the 'DNA' dataset across ALL ingested seasons.
+        Enables cross-era player comparisons.
+        """
+        # Fetch ALL events
+        events_df = await repo.fetch_all_events(self.session)
+
+        if events_df.empty:
+            return pd.DataFrame()
+
+        # Fetch metadata for all players
+        unique_player_ids = events_df["player_id"].unique().tolist()
+        player_meta_df = await repo.fetch_player_metadata(
+            self.session, unique_player_ids
+        )
+
+        # Transformation
+        stats_df = etl.aggregate_player_season_stats(events_df)
+
+        if stats_df.empty:
+            return pd.DataFrame()
+
+        # Enrich with Position Groups
+        player_meta_df = player_meta_df.set_index("id")
+        position_map = etl.assign_position_group(player_meta_df)
+
+        stats_df = stats_df.reset_index()
+        stats_df["position_group"] = (
+            stats_df["player_id"].map(position_map).fillna("UNKNOWN")
+        )
+        stats_df["name"] = (
+            stats_df["player_id"].map(player_meta_df["name"]).fillna("Unknown")
+        )
+
+        stats_df = stats_df.set_index(["season_id", "player_id"])
+
+        return stats_df
+
+    async def train_global_models(self) -> Dict[str, int]:
+        """
+        Trains unified models across ALL seasons for each position group.
+        Enables cross-era comparisons like "2016 Kanté plays like 2024 Rodri".
+        """
+        from src.analytics.doppelganger import train
+
+        # 1. Build global dataset
+        df_global = await self.build_global_dataset()
+
+        if df_global.empty:
+            return {}
+
+        results = {}
+
+        # 2. Split by Position Group
+        for group in PositionGroup:
+            group_val = group.value
+            df_group = df_global[df_global["position_group"] == group_val]
 
             if df_group.empty:
                 continue
@@ -221,11 +293,15 @@ class DoppelgangerService:
         for idx, distance in zip(indices, distances):
             entity = bundle.entities[idx]
 
-            # Skip if this is the target player themselves
+            # Skip if this is the target player themselves (same player+season)
             if (
                 entity.player_id == query.player_id
                 and entity.season_id == query.season_id
             ):
+                continue
+
+            # Skip same player from different seasons if requested
+            if query.exclude_same_player and entity.player_id == query.player_id:
                 continue
 
             # Convert distance to similarity score

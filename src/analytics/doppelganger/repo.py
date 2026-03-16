@@ -123,3 +123,51 @@ async def fetch_player_metadata(
     df = pd.DataFrame(data)
     df.columns = ["id", "name", "position"]
     return df
+
+
+async def fetch_all_events(session: AsyncSession) -> pd.DataFrame:
+    """
+    Fetches ALL events across all seasons for global model training.
+    """
+    query = (
+        select(
+            Event.id,
+            Event.match_id,
+            Event.player_id,
+            Event.type,
+            Event.minute,
+            Event.location_x,
+            Event.location_y,
+            Event.attributes,
+            Match.season_id,  # type: ignore
+            Match.home_team,  # type: ignore
+            Match.away_team,  # type: ignore
+        )
+        .join(Match, Event.match_id == Match.id)
+        .where(Event.player_id.is_not(None))  # type: ignore
+    )
+
+    result = await session.exec(query)
+    data = result.all()
+
+    if not data:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(data)
+
+    expected_cols = [
+        "id",
+        "match_id",
+        "player_id",
+        "type",
+        "minute",
+        "location_x",
+        "location_y",
+        "attributes",
+        "season_id",
+        "home_team",
+        "away_team",
+    ]
+    df.columns = expected_cols
+
+    return df

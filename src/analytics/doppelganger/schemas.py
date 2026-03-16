@@ -16,6 +16,10 @@ class DoppelgangerQuery(BaseModel):
     season_id: int
     position_group: Optional[PositionGroup] = None
     limit: int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT)
+    exclude_same_player: bool = Field(
+        default=True,
+        description="Exclude matches of the same player from different seasons",
+    )
 
     @field_validator("limit")
     @classmethod

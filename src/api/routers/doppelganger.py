@@ -29,6 +29,7 @@ async def train_models(
     """
     Triggers the training of Doppelgänger models for a specific season.
     This populates the in-memory vector database.
+    DEPRECATED: Use /train-global for cross-season comparisons.
     """
     service = DoppelgangerService(session)
     counts = await service.train_season_models(season_id)
@@ -36,6 +37,23 @@ async def train_models(
     return {
         "message": "Training complete",
         "season_id": season_id,
+        "vector_counts": counts,
+    }
+
+
+@router.post("/train-global", status_code=202)
+async def train_global_models(
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Trains unified Doppelgänger models across ALL ingested seasons.
+    Enables cross-era comparisons like "2016 Kanté plays like 2024 Rodri".
+    """
+    service = DoppelgangerService(session)
+    counts = await service.train_global_models()
+
+    return {
+        "message": "Global training complete",
         "vector_counts": counts,
     }
 
@@ -54,6 +72,10 @@ async def search_similar_players(
         ge=1,
         le=MAX_LIMIT,
         description=f"Number of similar players to return (max {MAX_LIMIT})",
+    ),
+    exclude_same_player: bool = Query(
+        True,
+        description="Exclude matches of the same player from different seasons",
     ),
     session: AsyncSession = Depends(get_session),
 ):
@@ -108,6 +130,7 @@ async def search_similar_players(
         season_id=season_id,
         position_group=position_group,
         limit=limit,
+        exclude_same_player=exclude_same_player,
     )
 
     # Execute search
@@ -141,16 +164,18 @@ async def search_similar_players(
     except NoMatchesError:
         # Return 200 with empty results instead of 404
         # This is a valid state - the player exists but has no similar matches
+        # Default to MID if position_group is not valid
+        safe_position = position_group if position_group else PositionGroup.MID
         return schemas.DoppelgangerResponse(
             meta=schemas.DoppelgangerMeta(
                 model_version=schemas.datetime.now(),
-                position_group=position_group or "UNKNOWN",
+                position_group=str(safe_position.value),
                 vector_count=0,
             ),
             target=schemas.TargetPlayer(
                 name="Unknown",
                 season_id=season_id,
-                position=position_group or "UNKNOWN",  # type: ignore
+                position=safe_position,
             ),
             similar_players=[],
         )

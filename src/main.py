@@ -39,25 +39,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
 
-    # Dev Helper: Auto-train Doppelgänger models for commonly used seasons
-    # if in development. This prevents the "vector_count: 0" issue on reload
+    # Auto-train unified Doppelgänger models across ALL seasons
+    # This enables cross-era comparisons (e.g., "2016 Kanté plays like 2024 Rodri")
     try:
-        seasons_to_train = [282, 106]  # 282: EPL 03/04, 106: World Cup 2022
         async for session in get_session():
             svc = DoppelgangerService(session)
-            for season_id in seasons_to_train:
-                logger.info(
-                    f"Auto-training Doppelgänger models for Season {season_id}..."
-                )
-                try:
-                    counts = await svc.train_season_models(season_id)
-                    logger.info(f"Season {season_id} Training Complete: {counts}")
-                except Exception as ex:
-                    # Don't crash startup if one season fails (e.g. data missing)
-                    logger.warning(f"Could not train season {season_id}: {ex}")
+            logger.info("Auto-training unified Doppelgänger models (all seasons)...")
+            try:
+                counts = await svc.train_global_models()
+                logger.info(f"Global Training Complete: {counts}")
+            except Exception as ex:
+                logger.warning(f"Global training failed: {ex}")
             break
     except Exception as e:
-        logger.warning(f"Auto-training loop failed: {e}")
+        logger.warning(f"Auto-training failed: {e}")
 
     yield
 

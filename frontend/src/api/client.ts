@@ -158,13 +158,17 @@ export const getSimilarPlayers = async (
   limit: number = 10,
   positionGroup?: string
 ): Promise<DoppelgangerResponse> => {
+  // Build params, excluding position_group if undefined or UNKNOWN
+  const params: Record<string, string | number> = {
+    player_id: playerId,
+    season_id: seasonId,
+    limit,
+  };
+  if (positionGroup && positionGroup !== 'UNKNOWN') {
+    params.position_group = positionGroup;
+  }
   const response = await apiClient.get<DoppelgangerResponse>('/analytics/doppelganger', {
-    params: {
-      player_id: playerId,
-      season_id: seasonId,
-      limit,
-      position_group: positionGroup,
-    },
+    params,
   });
   return response.data;
 };
