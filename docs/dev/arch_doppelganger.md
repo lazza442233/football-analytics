@@ -57,7 +57,7 @@ The **Doppelgänger Engine** is a "Moneyball"-style discovery tool designed to f
 
 ### 3.2 Normalization & Filters
 
-- **MinInvolvement Filter**: Exclude player-seasons with < 300 minutes.
+- **MinInvolvement Filter**: Exclude player-seasons with < 180 minutes.
 - **Scaling**: `StandardScaler`.
 
 ### 3.3 Interpretability Logic
@@ -110,7 +110,7 @@ To explain a match, we compare the scaled vectors of `Target` and `Match`.
 **Errors:**
 
 - `404`: Player/Season not found.
-- `422`: Insufficient data (Player < 300 mins).
+- `422`: Insufficient data (Player < 180 mins).
 - `200 Empty`: No matches found above 0.70 similarity threshold.
 
 ---

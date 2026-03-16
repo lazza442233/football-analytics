@@ -16,7 +16,7 @@ The interface must transform complex vector embeddings and Z-scores into intuiti
 
 To ensure high interactivity and rich data visualization, we will use a Modern Frontend Stack (SPA):
 
-*   **Framework:** React 18 + Vite (TypeScript)
+*   **Framework:** React 19 + Vite (TypeScript)
 *   **Styling:** Tailwind CSS (for rapid layout) + `clsx`/`tailwind-merge`
 *   **Data Fetching:** TanStack Query (React Query)
 *   **Visualization:** **Recharts** (best for Radar/Spider charts) or **Tremor** (for KPI cards).

@@ -4,7 +4,7 @@ React-based frontend for the Football Analytics platform, visualizing player sta
 
 ## Tech Stack
 
-- **Framework**: React 18 + TypeScript + Vite
+- **Framework**: React 19 + TypeScript + Vite
 - **Styling**: Tailwind CSS v4
 - **Data Fetching**: Axios + TanStack Query (React Query)
 - **Visualization**: Recharts
